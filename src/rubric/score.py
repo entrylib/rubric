@@ -126,7 +126,7 @@ def _instances(doc, c, by_id, public_record):
     flags = [f for f in _list(_dict(c.get("test")).get("flags")) if isinstance(f, str)]
     if flags:
         ch = CHECKS["plan_flags"]
-        out.append(("plan_flags", cid, min(ch["cost_each"] * len(flags), ch["cap"]), [cid],
+        out.append(("plan_flags", cid, sum(repeated([ch["cost_each"]] * len(flags))), [cid],
                     {"flags": ", ".join(f.replace("_", " ") for f in flags)}))
 
     level = c.get("verifiability")
@@ -137,7 +137,7 @@ def _instances(doc, c, by_id, public_record):
               if isinstance(f, str) and f not in ("unstated_support", "unanchored_plan")]
     if vflags:
         ch = CHECKS["verifiability_flags"]
-        out.append(("verifiability_flags", cid, min(ch["cost_each"] * len(vflags), ch["cap"]), [cid],
+        out.append(("verifiability_flags", cid, sum(repeated([ch["cost_each"]] * len(vflags))), [cid],
                     {"flags": ", ".join(f.replace("_", " ") for f in vflags)}))
 
     if not formal and not _dict(c.get("scope")):
@@ -182,6 +182,13 @@ def _closure(cid, by_id):
     return seen
 
 
+def repeated(costs):
+    """The costs of repeated problems of one check on one claim (RUBRIC.md §3.6): sorted from the largest, the first
+    in full and each next one half the one before (rounded down, at least 1), so that every one removed or mitigated
+    lowers the total and the total stays below twice the largest."""
+    return [0 if c <= 0 else max(1, c // 2 ** i) for i, c in enumerate(sorted(costs, reverse=True))]
+
+
 def _aggregate(instances):
     """Instances counted as RUBRIC.md §3.6: {(check, key): {cost, claims, objects, args}}; key is None for `kind`."""
     out = {}
@@ -193,13 +200,10 @@ def _aggregate(instances):
         for c in claims:
             if c not in p["claims"]:
                 p["claims"].append(c)
-    caps = {}
-    for (check, key), p in sorted(out.items(), key=lambda kv: -kv[1]["cost"]):
-        cap = CHECKS[check].get("cap") if CHECKS[check]["count"] == "each" else None
-        if cap is not None:
-            left = cap - caps.get(check, 0)
-            p["cost"] = max(0, min(p["cost"], left))
-            caps[check] = caps.get(check, 0) + p["cost"]
+    for check in {k[0] for k in out if CHECKS[k[0]]["count"] == "each"}:
+        items = sorted((p for k, p in out.items() if k[0] == check), key=lambda p: -p["cost"])
+        for p, cost in zip(items, repeated([p["cost"] for p in items])):
+            p["cost"] = cost
     return out
 
 
@@ -253,6 +257,12 @@ def score(doc):
         out_claims[cid] = {"score": value, "band": band(value), "dots": dots,
                            "problems": [pid[k] for k in listed if agg[k]["cost"]],
                            "costs": {pid[k]: agg[k]["cost"] for k in listed if agg[k]["cost"]}}
+
+    # A problem's cost is the most it costs any one claim (a repeated problem may cost one claim less than another).
+    for k in order:
+        charged = [c["costs"][pid[k]] for c in out_claims.values() if pid[k] in c["costs"]]
+        if charged:
+            problems[pid[k]]["cost"] = max(charged)
 
     paper = None
     if principal:

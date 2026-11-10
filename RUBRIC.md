@@ -1,4 +1,4 @@
-# EntryLib scoring rubric, v0.1
+# EntryLib scoring rubric, v0.2
 
 How EntryLib scores the claimsets it publishes. This document is normative: the scorer (`src/rubric/`) implements it, and the costs in `src/rubric/rubric.json` are the ones stated here. Every score records the rubric version it was computed under.
 
@@ -54,12 +54,12 @@ Each check belongs to one of five **groups**. A claim shows one dot per group (�
 - `exploratory_inference`: a claim of type `associational`, `causal`, `mechanistic` or `predictive` whose `planning` is `exploratory` (or absent). What lowers its reliability is selection a reader cannot see: a result picked from many tries. Cost 5 when the paper's lab record (`paper.exploration.lab_record`) is public, so every run can be seen; 15 otherwise. Descriptive, methodological, formal and interpretive claims cost nothing for being exploratory: a measurement is not a test.
 - `plan_anchor`: a confirmatory claim whose `planned_at_anchor` is `git_remote` costs 3; `none` (or absent) costs 10. `platform`, `rfc3161` and `registry` cost nothing.
 - `plan_deviations`: `planning: confirmatory_with_deviations` costs 5. The deviations themselves are limitations (§3.5).
-- `plan_flags`: each flag in the claim's `test.flags` (set by the lab record, e.g. `code_changed_after_plan`) costs 5, at most 10.
+- `plan_flags`: each flag in the claim's `test.flags` (set by the lab record, e.g. `code_changed_after_plan`) costs 5; several are repeated problems (§3.6): 5, then 2, then 1 for each further flag.
 
 ### 3.3 Checkable
 
 - `verifiability`: `audit_only` costs 10; `unverifiable` costs 45 (claimset §5).
-- `verifiability_flags`: each of the claim's `verifiability_flags` costs 5, at most 15. `unstated_support` and `unanchored_plan` are not counted here: `support_kind` and `plan_anchor` already count them.
+- `verifiability_flags`: each of the claim's `verifiability_flags` costs 5; several are repeated problems (§3.6). `unstated_support` and `unanchored_plan` are not counted here: `support_kind` and `plan_anchor` already count them.
 
 ### 3.4 Context
 
@@ -78,15 +78,19 @@ Each check belongs to one of five **groups**. A claim shows one dot per group (�
   | `reduces_precision` | 5 | 2 | 0 |
   | `reduces_transferability` | 2 | 1 | 0 |
 
-  At most 30 in all.
-- `unchecked_assumption`: each assumption in the claim's `assumptions` whose `check` is `unchecked` costs 3, at most 9. `tested`, `sensitivity_analysed` and `untestable` cost nothing.
+  Several limitations of one claim are repeated problems (§3.6).
+- `unchecked_assumption`: each assumption in the claim's `assumptions` whose `check` is `unchecked` costs 3; several are repeated problems (§3.6). `tested`, `sensitivity_analysed` and `untestable` cost nothing.
 
 ### 3.6 Counting
 
 Each check has a **count**:
 
 - `kind`: the check is one problem however often it occurs; it costs its largest instance.
-- `each`: every instance (every limitation, every assumption) is its own problem, up to the check's cap.
+- `each`: every instance (every limitation, every assumption) is its own problem.
+
+**Repeated problems.** When one claim has several problems of the same check (several limitations, several unchecked assumptions, several flags), they are sorted from the costliest: the first costs in full, and each next one half the cost of the one before it in that order, rounded down and at least 1. Two limitations that could reverse a claim cost 20 + 10; mitigating one partly makes them 20 + 5; a third adds 5. Every problem removed or mitigated therefore lowers the score, and the total stays below twice the costliest.
+
+A problem's stated cost is the most it costs any one claim: the same limitation may cost one claim in full and another, where it comes second, half.
 
 Problems a claim inherits from what it rests on are added to its own by the same counting: a claim and its premise both without a scope cost 10, not 20.
 
@@ -129,4 +133,5 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
+- **0.2** (2026-11): repeated problems on one claim cost half the one before instead of being capped (caps made a partial mitigation worth nothing once the cap was reached); a problem's stated cost is the most it costs any one claim.
 - **0.1** (2026-11): first version.

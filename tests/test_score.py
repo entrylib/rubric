@@ -72,13 +72,15 @@ class TestChecks(unittest.TestCase):
         self.assertEqual(problems(rubric.score(doc(claim(planning="confirmatory_with_deviations"))))
                          ["plan_deviations"], 5)
         r = rubric.score(doc(claim(test={"flags": ["code_changed_after_plan", "a", "b"]})))
-        self.assertEqual(problems(r)["plan_flags"], 10)                    # capped
+        self.assertEqual(problems(r)["plan_flags"], 8)                     # repeated: 5 + 2 + 1
 
     def test_checkable(self):
         self.assertEqual(problems(rubric.score(doc(claim(verifiability="audit_only"))))["verifiability"], 10)
         self.assertEqual(problems(rubric.score(doc(claim(verifiability="unverifiable"))))["verifiability"], 45)
         r = rubric.score(doc(claim(verifiability_flags=["figure_without_data", "unanchored_plan"])))
         self.assertEqual(problems(r)["verifiability_flags"], 5)            # unanchored_plan counted by plan_anchor
+        r = rubric.score(doc(claim(verifiability_flags=["figure_without_data", "unpublished_prompts"])))
+        self.assertEqual(problems(r)["verifiability_flags"], 7)
 
     def test_context(self):
         self.assertEqual(problems(rubric.score(doc(claim(scope={}))))["no_scope"], 10)
@@ -100,7 +102,7 @@ class TestChecks(unittest.TestCase):
                 {"id": "L3", "impact": "reduces_precision", "mitigation": "addressed", "affects": ["C1"]},
                 {"id": "L4", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]}]
         r = rubric.score(doc(claim(), limitations=lims))
-        self.assertEqual(r["claims"]["C1"]["score"], 70)                   # 20 + 20 + 6, capped at 30
+        self.assertEqual(r["claims"]["C1"]["score"], 69)                   # repeated: 20 + 10 + 1 (6 halved twice)
         a = {"id": "C9", "statement": "Errors are Gaussian.", "type": "descriptive", "role": "supporting",
              "support": [{"kind": "assumption"}], "assumption_category": "statistical", "check": "unchecked"}
         r = rubric.score(doc(claim(assumptions=["C9"]), a))
@@ -119,6 +121,33 @@ class TestChecks(unittest.TestCase):
 
 
 class TestCounting(unittest.TestCase):
+    def test_repeated_problems(self):
+        from rubric.score import repeated
+        self.assertEqual(repeated([20, 20]), [20, 10])
+        self.assertEqual(repeated([10, 20]), [20, 5])
+        self.assertEqual(repeated([3, 3, 3, 3]), [3, 1, 1, 1])
+        self.assertEqual(repeated([2, 0]), [2, 0])
+
+        def two(mitigation):
+            lims = [{"id": "L1", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]},
+                    {"id": "L2", "impact": "could_reverse", "mitigation": mitigation, "affects": ["C1"]}]
+            return rubric.score(doc(claim(), limitations=lims))["claims"]["C1"]["score"]
+        self.assertEqual([two("none"), two("partial"), two("addressed")], [70, 75, 80])   # every step counts
+        self.assertGreater(two("partial"), two("none"))
+
+    def test_a_problem_states_the_most_it_costs_a_claim(self):
+        lims = [{"id": "L1", "impact": "could_reverse", "mitigation": "none", "affects": ["C1", "C2"]},
+                {"id": "L2", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]},
+                {"id": "L3", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]}]
+        r = rubric.score(doc(claim("C1"), claim("C2"), limitations=lims))
+        for p in r["problems"].values():
+            charged = [c["costs"][pid] for c in r["claims"].values() for pid in c["costs"]
+                       if r["problems"][pid] is p]
+            self.assertEqual(p["cost"], max(charged))
+        l1 = next(pid for pid, p in r["problems"].items() if p["objects"] == ["L1"])
+        self.assertEqual(r["problems"][l1]["cost"], 20)
+
+
     def test_a_claim_pays_for_what_it_rests_on_once(self):
         premise = claim("C2", role="supporting", scope={})
         r = rubric.score(doc(claim("C1", scope={}, depends_on=["C2"]), premise))
