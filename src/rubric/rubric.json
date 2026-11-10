@@ -1,0 +1,89 @@
+{
+  "version": "0.1",
+  "bands": [
+    {"name": "high", "label": "High", "min": 80},
+    {"name": "medium", "label": "Medium", "min": 60},
+    {"name": "low", "label": "Low", "min": 0}
+  ],
+  "groups": [
+    {"name": "support", "label": "Support", "about": "what the claim rests on: evidence, proof, citation, argument or judgement"},
+    {"name": "plan", "label": "Plan", "about": "whether the test was planned before it was run, and how the plan was anchored"},
+    {"name": "checkable", "label": "Checkable", "about": "whether a reader can obtain what is needed to check the claim"},
+    {"name": "context", "label": "Context", "about": "where the claim holds, what earlier work it relates to, and which recorded results its numbers come from"},
+    {"name": "open", "label": "Open problems", "about": "limitations and assumptions that are still open"}
+  ],
+  "dots": {"green_max": 2, "amber_max": 10},
+  "checks": {
+    "support_kind": {
+      "group": "support", "count": "kind",
+      "costs": {"evidence": 0, "formal_checked": 0, "formal_unchecked": 25, "formal_disputed": 45, "cited": 20,
+                "consensus": 25, "argument": 30, "expert_judgement": 45, "unstated": 70},
+      "text": "Rests on {what}",
+      "fix": "Support the claim with evidence the claimset records, or have its proof checked."
+    },
+    "exploratory_inference": {
+      "group": "plan", "count": "kind",
+      "costs": {"with_public_record": 5, "without_public_record": 15},
+      "text": "{type} claim tested without a plan recorded beforehand{record}",
+      "fix": "Test it again under a lab-record plan or a registration, or publish the lab record that shows every run."
+    },
+    "plan_anchor": {
+      "group": "plan", "count": "kind",
+      "costs": {"git_remote": 3, "none": 10},
+      "text": "The plan's time is anchored {how}",
+      "fix": "Anchor plans with the platform, a timestamp authority (RFC 3161) or a registry."
+    },
+    "plan_deviations": {
+      "group": "plan", "count": "kind", "costs": {"deviations": 5},
+      "text": "The test deviated from its plan",
+      "fix": "Each deviation is a limitation: say how it bears on the result."
+    },
+    "plan_flags": {
+      "group": "plan", "count": "kind", "cost_each": 5, "cap": 10,
+      "text": "The lab record flags the test: {flags}",
+      "fix": "Rerun the test as planned, or explain the flag in a limitation."
+    },
+    "verifiability": {
+      "group": "checkable", "count": "kind",
+      "costs": {"audit_only": 10, "unverifiable": 45},
+      "text": "Verifiability: {level}",
+      "fix": "Make the data, code and models the claim rests on available, or state why they cannot be."
+    },
+    "verifiability_flags": {
+      "group": "checkable", "count": "kind", "cost_each": 5, "cap": 15,
+      "text": "Flags: {flags}",
+      "fix": "Publish what each flag says is missing."
+    },
+    "no_scope": {
+      "group": "context", "count": "kind", "costs": {"missing": 10},
+      "text": "No scope: where the claim holds is not stated",
+      "fix": "Give the claim a scope: population, setting, period, data, conditions, exclusions."
+    },
+    "no_prior_work": {
+      "group": "context", "count": "kind", "costs": {"missing": 5},
+      "text": "A principal claim related to no earlier work",
+      "fix": "Relate the claim to the earlier work it extends, addresses or departs from."
+    },
+    "numbers_without_results": {
+      "group": "context", "count": "kind", "costs": {"missing": 5},
+      "text": "Numbers in the statement point to no recorded result",
+      "fix": "List the results, table rows or cells the numbers come from in the support's results."
+    },
+    "limitation": {
+      "group": "open", "count": "each", "cap": 30,
+      "costs": {
+        "could_reverse": {"none": 20, "partial": 10, "addressed": 0},
+        "could_bias_magnitude": {"none": 12, "partial": 6, "addressed": 0},
+        "reduces_precision": {"none": 5, "partial": 2, "addressed": 0},
+        "reduces_transferability": {"none": 2, "partial": 1, "addressed": 0}
+      },
+      "text": "Limitation {id} ({impact}, {mitigation}): {statement}",
+      "fix": "Mitigate it with evidence, or narrow the claim's scope so that it no longer applies."
+    },
+    "unchecked_assumption": {
+      "group": "open", "count": "each", "cost_each": 3, "cap": 9,
+      "text": "Assumption {id} is not checked: {statement}",
+      "fix": "Test the assumption, or analyse how sensitive the claim is to it."
+    }
+  }
+}
