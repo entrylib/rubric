@@ -29,7 +29,7 @@ INFERENTIAL = {"associational", "causal", "mechanistic", "predictive"}
 SUPPORT_WORDS = {"evidence": "evidence", "formal_checked": "a checked proof", "formal_unchecked": "an unchecked proof",
                  "formal_disputed": "a disputed proof", "cited": "cited work only", "consensus": "consensus only",
                  "argument": "argument only", "expert_judgement": "expert judgement only",
-                 "unstated": "none stated"}
+                 "unstated": "no stated support"}
 TERM = re.compile(r"\[\[[^\]:]+:([^\]]*)\]\]")
 MATH = re.compile(r"\$\$.+?\$\$|\$[^$]+\$|\\\(.+?\\\)", re.S)
 

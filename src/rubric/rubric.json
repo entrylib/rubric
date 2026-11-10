@@ -18,7 +18,7 @@
       "group": "support", "count": "kind",
       "costs": {"evidence": 0, "formal_checked": 0, "formal_unchecked": 25, "formal_disputed": 45, "cited": 20,
                 "consensus": 25, "argument": 30, "expert_judgement": 45, "unstated": 70},
-      "text": "Support: {what}",
+      "text": "Rests on {what}",
       "fix": "Support the claim with evidence the claimset records, or have its proof checked."
     },
     "exploratory_inference": {
