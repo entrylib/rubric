@@ -1,5 +1,5 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "bands": [
     {"name": "high", "label": "High", "min": 80},
     {"name": "medium", "label": "Medium", "min": 60},
@@ -39,7 +39,7 @@
       "fix": "Each deviation is a limitation: say how it bears on the result."
     },
     "plan_flags": {
-      "group": "plan", "count": "kind", "cost_each": 5, "cap": 10,
+      "group": "plan", "count": "kind", "cost_each": 5,
       "text": "The lab record flags the test: {flags}",
       "fix": "Rerun the test as planned, or explain the flag in a limitation."
     },
@@ -50,7 +50,7 @@
       "fix": "Make the data, code and models the claim rests on available, or state why they cannot be."
     },
     "verifiability_flags": {
-      "group": "checkable", "count": "kind", "cost_each": 5, "cap": 15,
+      "group": "checkable", "count": "kind", "cost_each": 5,
       "text": "Flags: {flags}",
       "fix": "Publish what each flag says is missing."
     },
@@ -70,7 +70,7 @@
       "fix": "List the results, table rows or cells the numbers come from in the support's results."
     },
     "limitation": {
-      "group": "open", "count": "each", "cap": 30,
+      "group": "open", "count": "each",
       "costs": {
         "could_reverse": {"none": 20, "partial": 10, "addressed": 0},
         "could_bias_magnitude": {"none": 12, "partial": 6, "addressed": 0},
@@ -81,7 +81,7 @@
       "fix": "Mitigate it with evidence, or narrow the claim's scope so that it no longer applies."
     },
     "unchecked_assumption": {
-      "group": "open", "count": "each", "cost_each": 3, "cap": 9,
+      "group": "open", "count": "each", "cost_each": 3,
       "text": "Assumption {id} is not checked: {statement}",
       "fix": "Test the assumption, or analyse how sensitive the claim is to it."
     }
