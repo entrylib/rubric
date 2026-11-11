@@ -106,6 +106,16 @@ Problems a claim inherits from what it rests on are added to its own by the same
 
 The band is always shown as a word as well as a colour.
 
+**What a band means.** A claim starts at 100 and loses the costs of its open problems, so a band is a budget of problems, and the costs (§3) are set so that a given problem falls in a given band:
+
+- **High:** at most 20 points lost: one serious problem, declared (an unmitigated limitation that could reverse the claim costs 20), or a few minor ones (no scope, an unchecked assumption, a plan anchored only by a push: 10 + 3 + 3). Nothing a reader must check before relying on the claim, or one thing, and the authors say so.
+- **Medium:** 21 to 40 lost: several real problems (an exploratory association whose lab record is not public, a missing scope and a partly mitigated limitation that could reverse it: 15 + 10 + 10). Usable, after reading what the claim rests on.
+- **Low:** more than 40 lost. Some problems put a claim here on their own: support nobody can check (`unverifiable`, 45). Not to be relied on without checking it.
+
+Because repeated problems of one check cost half the one before (§3.6), minor problems piling up move a claim down a band without sinking it.
+
+The edges, 80 and 60, are a judgement: they read like familiar marks, and they are not yet calibrated against how claims fare under independent review or reproduction (issue #6). A band says how well the claimset's own record supports a claim, never whether the claim is true. Changing an edge, or a cost so that a problem changes band, is a new version of this rubric (§7).
+
 ### 4.2 Dots
 
 Every scored claim shows five dots, one per group, coloured by the points the group lost: green for 0 to 2, amber for 3 to 10, red for more than 10. A dot's explanation lists its problems. The paper's dots are, for each group, the worst dot among its principal claims.
