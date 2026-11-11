@@ -65,5 +65,34 @@ class TestReport(unittest.TestCase):
         self.assertNotIn("BIGGEST", text)
 
 
+class TestAssess(unittest.TestCase):
+    def test_principal_claims_are_compared_with_what_find_returns(self):
+        d = copy.deepcopy(REAL)
+        principal = next(c for c in d["claims"] if c.get("role") == "principal" and c.get("novelty"))
+        asked = []
+
+        def find(statement):
+            asked.append(statement)
+            return [{"claim": "entrylib:2026.000009#C1", "statement": principal["statement"]},
+                    {"claim": f"{d['paper']['id']}#C9", "statement": principal["statement"]}]   # its own: ignored
+        result = rubric.assess(d, find)
+        n = result["novelty"][principal["id"]]
+        self.assertTrue(n["checked"])
+        self.assertEqual([m["claim"] for m in n["matches"]], ["entrylib:2026.000009#C1"])
+        self.assertEqual(n["check"], "unacknowledged")
+        self.assertIn(principal["statement"], asked)
+        self.assertTrue(all(not v["checked"] for cid, v in result["novelty"].items()
+                            if next(c for c in d["claims"] if c["id"] == cid).get("role") != "principal"))
+        self.assertIn("NOVELTY IN QUESTION", rubric.report(result))
+        self.assertEqual({k: v for k, v in result.items() if k != "novelty"}, rubric.score(copy.deepcopy(REAL)))
+
+    def test_without_find_nothing_is_compared(self):
+        result = rubric.assess(copy.deepcopy(REAL))
+        self.assertTrue(result["novelty"])
+        self.assertTrue(all(not n["checked"] and n["matches"] == [] for n in result["novelty"].values()))
+        unchecked = dict(result, novelty={"C1": {"check": "unacknowledged", "checked": False, "matches": []}})
+        self.assertNotIn("NOVELTY IN QUESTION", rubric.report(unchecked))
+
+
 if __name__ == "__main__":
     unittest.main()

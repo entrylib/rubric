@@ -133,6 +133,7 @@ The explanation of the paper's score names the lowest principal claim and its pr
 Novelty is shown as the claim's label (claimset §3.7: `no_prior_found`, `extension`, `replication`, `refutation`; `not_applicable` shows nothing), as the authors' account, with the result of the **close-match check**:
 
 - Every principal claim is compared with the claims of every claimset published on EntryLib before it, including the same guarantor's.
+- A claimset not yet submitted (scored with `claimset score --novelty`) is compared with the claims published on EntryLib at the time. A check that was not run is reported as not run, never as no close match.
 - Two statements match closely when their **similarity** (below) is at least 0.6.
 - A close match is **acknowledged** when the claim has a relation (any type) to the matching claim or to its claimset; otherwise it is **unacknowledged**.
 - The result is one of: no close match on EntryLib; close matches, all acknowledged; or unacknowledged close matches, listed. An unacknowledged close match puts the label in question.

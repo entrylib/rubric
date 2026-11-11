@@ -5,7 +5,8 @@ portal's issues.txt) or of one not yet submitted (`claimset score`).
     open_problems(scores)     -> [(id, problem, {claim: cost})] of the problems that lower a score, in rubric order
     biggest(scores, n)        -> the n problems that cost one claim the most, most costly first
 
-`scores` is what score() returns, with, when the close-match check was run, `novelty`: {claim id: novelty()}.
+`scores` is what score() or assess() returns; assess() adds `novelty`, and only claims it compared (`checked`) can be
+in question.
 """
 
 
@@ -47,7 +48,7 @@ def report(scores, biggest_n=0):
                 for pid, p, lowers in top]
         out.append("")
     flagged = {cid: n for cid, n in (scores.get("novelty") or {}).items()
-               if isinstance(n, dict) and n.get("check") == "unacknowledged"}
+               if isinstance(n, dict) and n.get("check") == "unacknowledged" and n.get("checked", True)}
     if flagged:
         out.append("NOVELTY IN QUESTION: close matches on EntryLib that the claim does not relate to:")
         out += [f"  {cid}: " + ", ".join(f"{m['claim']} (similarity {m['similarity']})" for m in n["matches"]
