@@ -2,7 +2,9 @@
 from the published claimset file, and the novelty close-match check.
 
     score(doc)                    -> the scores of a claimset: claims, paper, problems (see score.py)
+    assess(doc, find=None)        -> score(doc) with novelty, comparing principal claims with what find() returns
     novelty(claim, matches, ...)  -> a claim's novelty label and close-match result (see novelty.py)
+    report(scores, biggest_n=0)   -> the scores as a plain-text report (see report.py)
     similarity(a, b)              -> how closely two claim statements match, 0 to 1
     stems(statement)              -> the stems similarity compares
     VERSION                       -> the rubric version every score records
@@ -10,7 +12,8 @@ from the published claimset file, and the novelty close-match check.
 Standard library only, Python 3.10+.
 """
 
-from .novelty import novelty, similarity, stems
+from .novelty import assess, novelty, similarity, stems
+from .report import report
 from .score import RUBRIC, VERSION, band, score
 
-__all__ = ["RUBRIC", "VERSION", "band", "novelty", "score", "similarity", "stems"]
+__all__ = ["RUBRIC", "assess", "VERSION", "band", "novelty", "report", "score", "similarity", "stems"]

@@ -75,3 +75,23 @@ def novelty(claim, matches, concept=None):
     check = ("none" if not close else "acknowledged" if all(m["acknowledged"] for m in close)
              else "unacknowledged")
     return {"label": label if label != "not_applicable" else None, "check": check, "matches": close}
+
+
+def assess(doc, find=None):
+    """score(doc) with `novelty`: {claim id: novelty() + `checked`} for every scored claim that has a novelty label.
+    Each principal claim is compared with the published claims that find(statement) returns ([{"claim", "statement"}],
+    supplied by the caller: the portal's search, or EntryLib's public search); `checked` says whether it was. Without
+    `find` nothing is compared and every `checked` is false."""
+    from .score import score
+    result = score(doc)
+    concept = (doc.get("paper") or {}).get("id") if isinstance(doc.get("paper"), dict) else None
+    novelty_of = {}
+    for c in doc.get("claims") or []:
+        if not isinstance(c, dict) or c.get("id") not in result["claims"] or not c.get("novelty"):
+            continue
+        compared = find is not None and c.get("role") == "principal"
+        n = novelty(c, find(c.get("statement")) if compared else [], concept)
+        n["checked"] = compared
+        novelty_of[c["id"]] = n
+    result["novelty"] = novelty_of
+    return result

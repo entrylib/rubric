@@ -110,6 +110,18 @@ The band is always shown as a word as well as a colour.
 
 Every scored claim shows five dots, one per group, coloured by the points the group lost: green for 0 to 2, amber for 3 to 10, red for more than 10. A dot's explanation lists its problems. The paper's dots are, for each group, the worst dot among its principal claims.
 
+### 4.3 Report
+
+The scores are also given as a plain-text report (`rubric.report`), for the authors and their agents, whether the claimset is published or not yet submitted. It holds, in this order:
+
+- the paper's score and band and its lowest principal claim;
+- optionally, the biggest issues: the problems that cost one claim the most points, most costly first;
+- the claims whose novelty is in question (§6), when the close-match check was run;
+- every problem that lowers a score, in the order of §5 (those of the principal claims first, most costly first), each with its check, its group, its cost, the claims it lowers and by how much, the objects it concerns and what would remove it;
+- every claim's score, band and problems.
+
+The report says only what the scores say; it adds no cost of its own.
+
 ## 5. Reliability of the paper
 
 The paper's score is the score of its lowest principal claim: a paper is as reliable as its weakest contribution. A paper with no principal claim that is scored has no score.
@@ -121,6 +133,7 @@ The explanation of the paper's score names the lowest principal claim and its pr
 Novelty is shown as the claim's label (claimset §3.7: `no_prior_found`, `extension`, `replication`, `refutation`; `not_applicable` shows nothing), as the authors' account, with the result of the **close-match check**:
 
 - Every principal claim is compared with the claims of every claimset published on EntryLib before it, including the same guarantor's.
+- A claimset not yet submitted (scored with `claimset score --novelty`) is compared with the claims published on EntryLib at the time. A check that was not run is reported as not run, never as no close match.
 - Two statements match closely when their **similarity** (below) is at least 0.6.
 - A close match is **acknowledged** when the claim has a relation (any type) to the matching claim or to its claimset; otherwise it is **unacknowledged**.
 - The result is one of: no close match on EntryLib; close matches, all acknowledged; or unacknowledged close matches, listed. An unacknowledged close match puts the label in question.

@@ -11,6 +11,8 @@ result = rubric.score(json.load(open("claimset.json")))   # a published claimset
 result["paper"]["score"], result["claims"]["C1"]["dots"]
 ```
 
+`rubric.report(result)` gives the scores as plain text: every issue that lowers a score and what would fix it. Before submitting, `claimset score paper.claimset.json` ([claimset](https://github.com/entrylib/claimset)) scores a claimset this way on your own machine, as it would be scored once published.
+
 Install: `pip install git+https://github.com/entrylib/rubric`. The portal installs it the same way and records the rubric version with every score.
 
 Planned: an AI reviewer ([#1](https://github.com/entrylib/rubric/issues/1)) and reproduction from artefacts ([#2](https://github.com/entrylib/rubric/issues/2)).
