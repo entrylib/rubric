@@ -41,7 +41,8 @@ class TestReport(unittest.TestCase):
         self.assertEqual(costs[0], max(everything))
         text = rubric.report(self.scores, 3)
         self.assertIn("BIGGEST ISSUES, most costly first:", text)
-        self.assertLess(text.index(f"  {top[0][0]} (-{costs[0]}; "), text.index("ISSUES, those of the principal"))
+        first = ", ".join(f"{c} -{v}" for c, v in top[0][2].items())
+        self.assertLess(text.index(f"  {top[0][0]} ({first}): "), text.index("ISSUES, those of the principal"))
         self.assertNotIn("BIGGEST ISSUES", self.text)
 
     def test_novelty_in_question(self):

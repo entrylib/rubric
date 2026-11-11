@@ -44,8 +44,8 @@ def report(scores, biggest_n=0):
     top = biggest(scores, biggest_n) if biggest_n else []
     if top:
         out.append("BIGGEST ISSUES, most costly first:")
-        out += [f"  {pid} (-{max(lowers.values())}; {', '.join(lowers)}): {_sentence(p['text'])} To fix: {p['fix']}"
-                for pid, p, lowers in top]
+        out += [f"  {pid} ({', '.join(f'{c} -{cost}' for c, cost in lowers.items())}): {_sentence(p['text'])} "
+                f"To fix: {p['fix']}" for pid, p, lowers in top]
         out.append("")
     flagged = {cid: n for cid, n in (scores.get("novelty") or {}).items()
                if isinstance(n, dict) and n.get("check") == "unacknowledged" and n.get("checked", True)}
