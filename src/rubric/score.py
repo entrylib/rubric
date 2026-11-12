@@ -1,7 +1,7 @@
 """Reliability scores (RUBRIC.md §2–5).
 
 score(doc, warnings=None) -> {
-    "rubric": "0.3",
+    "rubric": "0.4",
     "claims": {"C1": {"score": 94, "band": "high", "dots": {"support": "green", ...}, "problems": ["P3", ...],
                       "costs": {"P3": 6, ...}, "inherited": {"P5": ["C2"], ...}}, ...},
     "assumptions": ["C24", ...],                 # not scored
@@ -135,6 +135,10 @@ def _has_numbers(statement):
     return re.search(r"\d", text) is not None
 
 
+#: Planning values of claims planned before they were run (§3.2): tests, and estimates (claimset v0.42).
+PLANNED = ("confirmatory", "confirmatory_with_deviations", "planned_estimate")
+
+
 def _unplanned_cost(c, public_record):
     """What the claim would cost for being exploratory (§3.2): the most its plan's problems may cost."""
     record = "with_public_record" if public_record else "without_public_record"
@@ -179,7 +183,7 @@ def _instances(doc, c, by_id, public_record, evidence, warned):
         elif cost:
             out.append(("exploratory_principal", cid, cost, [cid], {"type": t or "", "record": record}))
     plan = []
-    if planning in ("confirmatory", "confirmatory_with_deviations"):
+    if planning in PLANNED:
         anchor = c.get("planned_at_anchor")
         costs = CHECKS["plan_anchor"]["costs"]
         if anchor == "git_remote" or anchor in (None, "none"):
@@ -188,13 +192,13 @@ def _instances(doc, c, by_id, public_record, evidence, warned):
                          {"how": how}))
     if planning == "confirmatory_with_deviations":
         plan.append(("plan_deviations", cid, CHECKS["plan_deviations"]["costs"]["deviations"], [cid], {}))
-    flags = [f for f in _list(_dict(c.get("test")).get("flags")) if isinstance(f, str)]
+    flags = [f for f in _list(_dict(c.get("test")).get("flags")) + _list(_dict(c.get("estimate")).get("flags"))
+             if isinstance(f, str)]
     if flags:
         ch = CHECKS["plan_flags"]
         plan.append(("plan_flags", cid, sum(repeated([ch["cost_each"]] * len(flags))), [cid],
                      {"flags": ", ".join(f.replace("_", " ") for f in flags)}))
-    out += _capped(plan, _unplanned_cost(c, public_record)) if planning in (
-        "confirmatory", "confirmatory_with_deviations") else plan
+    out += _capped(plan, _unplanned_cost(c, public_record)) if planning in PLANNED else plan
 
     level = c.get("verifiability")
     if level in CHECKS["verifiability"]["costs"]:

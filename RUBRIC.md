@@ -1,4 +1,4 @@
-# EntryLib scoring rubric, v0.3
+# EntryLib scoring rubric, v0.4
 
 How EntryLib scores the claimsets it publishes. This document is normative: the scorer (`src/rubric/`) implements it, and the costs in `src/rubric/rubric.json` are the ones stated here. Every score records the rubric version it was computed under.
 
@@ -57,13 +57,13 @@ An argument from claims the file scores costs less than an argument alone: the p
 
 ### 3.2 Plan
 
-A plan never costs more than no plan. Every planned test is at least as reliable as the same claim unplanned, so the problems of a claim's plan together (`plan_anchor`, `plan_deviations`, `plan_flags`) cost at most what the same claim would cost unplanned; beyond that they are cut, the costliest kept first.
+A claim is **planned** when its `planning` is `confirmatory`, `confirmatory_with_deviations` or `planned_estimate` (a value whose estimation a plan fixed in advance, claimset v0.42 §3.3.3); it then costs nothing for being exploratory. A plan never costs more than no plan. Every planned test or estimate is at least as reliable as the same claim unplanned, so the problems of a claim's plan together (`plan_anchor`, `plan_deviations`, `plan_flags`) cost at most what the same claim would cost unplanned; beyond that they are cut, the costliest kept first.
 
 - `exploratory_inference`: a claim of type `associational`, `causal`, `mechanistic` or `predictive` whose `planning` is `exploratory` (or absent). What lowers its reliability is selection a reader cannot see: a result picked from many tries. Cost 5 when the paper's lab record (`paper.exploration.lab_record`) is public, so every run can be seen; 15 otherwise.
 - `exploratory_principal`: a principal claim of any other type except `formal` whose `planning` is `exploratory` (or absent). Which measurements a paper reports first is a selection too, smaller than an inference's. Cost 3 when the lab record is public; 5 otherwise. Claims that are not principal cost nothing for being exploratory: a measurement that supports another claim is not a finding of its own.
-- `plan_anchor`: a confirmatory claim whose `planned_at_anchor` is `git_remote` costs 2; `none` (or absent) costs 10. `platform`, `rfc3161` and `registry` cost nothing.
+- `plan_anchor`: a planned claim whose `planned_at_anchor` is `git_remote` costs 2; `none` (or absent) costs 10. `platform`, `rfc3161` and `registry` cost nothing.
 - `plan_deviations`: `planning: confirmatory_with_deviations` costs 5. The deviations themselves are limitations (§3.5).
-- `plan_flags`: each flag in the claim's `test.flags` (set by the lab record, e.g. `code_changed_after_plan`) costs 5; several are repeated problems (§3.6): 5, then 2, then 1 for each further flag.
+- `plan_flags`: each flag in the claim's `test.flags` or `estimate.flags` (set by the lab record, e.g. `code_changed_after_plan`, `diagnostic_missing`) costs 5; several are repeated problems (§3.6): 5, then 2, then 1 for each further flag.
 
 ### 3.3 Checkable
 
@@ -168,6 +168,7 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
+- **0.4** (2026-11): planned estimates (claimset v0.42) are planned claims (§3.2): no cost for being exploratory, `plan_anchor` as for a confirmatory claim, and the flags of `estimate.flags` (among them `diagnostic_missing`) cost as a test's do.
 - **0.3** (2026-11): from a study with claimset-lab whose scores rewarded leaving things out.
   - A plan never costs more than no plan (§3.2): exploratory principal claims of any type cost 3 or 5 (`exploratory_principal`); a plan anchored by a push costs 2; a plan's problems together cost at most what the claim would cost unplanned.
   - Declaring limitations never costs more than declaring none (§3.5): their costs are halved (could reverse 10, could bias 6, precision 3, transferability 1), and a principal claim that declares none costs 10 (`no_limitation`). A limitation that restates the declared competing interest (warning 46) costs nothing.
