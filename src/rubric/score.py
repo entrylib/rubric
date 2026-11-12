@@ -11,7 +11,7 @@ score(doc, warnings=None) -> {
 }
 
 `warnings` are the claimset validator's warnings for the file ([{rule, where, message}], its published validation
-report), when given: warning 17 decides `numbers_without_results`, and a limitation with warning 45 (it restates the
+report), when given: warning 17 decides `numbers_without_results`, and a limitation with warning 46 (it restates the
 declared competing interest) costs nothing.
 
 A problem in "problems" is one aggregated problem (§3.6) over the principal claims and what they rest on (then over the
@@ -241,8 +241,8 @@ def _instances(doc, c, by_id, public_record, evidence, warned):
 
 
 def _restated(lim, warned):
-    """A limitation that only restates the declared competing interest (warning 45; §3.5)."""
-    return warned is not None and ("W45", f"limitations:{lim.get('id')}.statement") in warned
+    """A limitation that only restates the declared competing interest (warning 46; §3.5)."""
+    return warned is not None and ("W46", f"limitations:{lim.get('id')}.statement") in warned
 
 
 def _closure(cid, by_id):

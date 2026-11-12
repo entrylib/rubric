@@ -180,11 +180,11 @@ class TestChecks(unittest.TestCase):
             self.assertNotIn("no_limitation", problems(rubric.score(doc(quiet, limitations=[]))))
 
     def test_a_restated_competing_interest_costs_nothing(self):
-        """§3.5 (0.3): a limitation with the validator's warning 45 is not charged, nor does it count as declared."""
+        """§3.5 (0.3): a limitation with the validator's warning 46 is not charged, nor does it count as declared."""
         lims = [{"id": "L1", "impact": "could_bias_magnitude", "mitigation": "none", "affects": ["C1"]}]
-        w45 = [{"rule": "W45", "where": "limitations:L1.statement", "message": "restates the competing interest"}]
+        w46 = [{"rule": "W46", "where": "limitations:L1.statement", "message": "restates the competing interest"}]
         self.assertEqual(problems(rubric.score(doc(claim(), limitations=lims)))["limitation"], 6)
-        r = rubric.score(doc(claim(), limitations=lims), warnings=w45)
+        r = rubric.score(doc(claim(), limitations=lims), warnings=w46)
         self.assertNotIn("limitation", problems(r))
         self.assertEqual(problems(r)["no_limitation"], 10)
 

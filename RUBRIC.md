@@ -11,7 +11,7 @@ Two things, kept apart:
 
 A claim's reliability and its novelty do not affect each other. A careful replication can be highly reliable and not new.
 
-In this version every score is computed by rules from the published claimset file and, where given, the warnings of the claimset validator published with it (its validation report): warning 17 (§3.4) and warning 45 (§3.5). The rules check the record, not the science: whether a claim follows from its evidence, whether its scope is narrower than the data, and what the authors did not declare are left to a reviewer (planned: issue #1). The page says so, and scores may change as the rubric and reviews develop.
+In this version every score is computed by rules from the published claimset file and, where given, the warnings of the claimset validator published with it (its validation report): warning 17 (§3.4) and warning 46 (§3.5). The rules check the record, not the science: whether a claim follows from its evidence, whether its scope is narrower than the data, and what the authors did not declare are left to a reviewer (planned: issue #1). The page says so, and scores may change as the rubric and reviews develop.
 
 ## 2. Reliability of a claim
 
@@ -87,7 +87,7 @@ A plan never costs more than no plan. Every planned test is at least as reliable
   | `reduces_precision` | 3 | 1 | 0 |
   | `reduces_transferability` | 1 | 0 | 0 |
 
-  Several limitations of one claim, its own and those it inherits, are repeated problems (§3.6), so together they cost less than twice the costliest: below 20. A limitation that only restates the paper's declared competing interest (the validator's warning 45) costs nothing: the declaration is shown with the paper, and who did the work is for readers to weigh, not a threat to a claim.
+  Several limitations of one claim, its own and those it inherits, are repeated problems (§3.6), so together they cost less than twice the costliest: below 20. A limitation that only restates the paper's declared competing interest (the validator's warning 46) costs nothing: the declaration is shown with the paper, and who did the work is for readers to weigh, not a threat to a claim.
 - `no_limitation`: a principal claim, not `formal`, that no limitation affects, neither its own nor one of what it rests on, costs 10. Every finding has limits; a claim that declares none leaves a reader to find them.
 - `unchecked_assumption`: each assumption in the claim's `assumptions` whose `check` is `unchecked` costs 3; several are repeated problems (§3.6). `tested`, `sensitivity_analysed` and `untestable` cost nothing.
 
@@ -170,7 +170,7 @@ A change of a cost, a band, a check or a rule is a new version of this rubric, l
 
 - **0.3** (2026-11): from a study with claimset-lab whose scores rewarded leaving things out.
   - A plan never costs more than no plan (§3.2): exploratory principal claims of any type cost 3 or 5 (`exploratory_principal`); a plan anchored by a push costs 2; a plan's problems together cost at most what the claim would cost unplanned.
-  - Declaring limitations never costs more than declaring none (§3.5): their costs are halved (could reverse 10, could bias 6, precision 3, transferability 1), and a principal claim that declares none costs 10 (`no_limitation`). A limitation that restates the declared competing interest (warning 45) costs nothing.
+  - Declaring limitations never costs more than declaring none (§3.5): their costs are halved (could reverse 10, could bias 6, precision 3, transferability 1), and a principal claim that declares none costs 10 (`no_limitation`). A limitation that restates the declared competing interest (warning 46) costs nothing.
   - Evidence named without the observations the claim reports costs 10 (§3.1); an argument from claims the file scores costs 10, not 30.
   - `numbers_without_results` uses the validator's warning 17, and names with digits are not numbers (§3.4).
   - `api_model_dependency` costs nothing when the API-only model is what is studied (§3.3).
