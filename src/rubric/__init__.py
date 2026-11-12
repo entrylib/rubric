@@ -1,8 +1,10 @@
 """EntryLib's scoring rubric (RUBRIC.md): reliability scores of a claimset's claims and of the paper, computed by rules
 from the published claimset file, and the novelty close-match check.
 
-    score(doc)                    -> the scores of a claimset: claims, paper, problems (see score.py)
-    assess(doc, find=None)        -> score(doc) with novelty, comparing principal claims with what find() returns
+    score(doc, warnings=None)     -> the scores of a claimset: claims, paper, problems (see score.py); warnings
+                                     are the claimset validator's for the file (its validation report)
+    assess(doc, find=None, warnings=None)
+                                  -> score() with novelty, comparing principal claims with what find() returns
     novelty(claim, matches, ...)  -> a claim's novelty label and close-match result (see novelty.py)
     report(scores, biggest_n=0)   -> the scores as a plain-text report (see report.py)
     similarity(a, b)              -> how closely two claim statements match, 0 to 1

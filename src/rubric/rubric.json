@@ -1,5 +1,5 @@
 {
-  "version": "0.2",
+  "version": "0.3",
   "bands": [
     {"name": "high", "label": "High", "min": 80},
     {"name": "medium", "label": "Medium", "min": 60},
@@ -16,10 +16,11 @@
   "checks": {
     "support_kind": {
       "group": "support", "count": "kind",
-      "costs": {"evidence": 0, "formal_checked": 0, "formal_unchecked": 25, "formal_disputed": 45, "cited": 20,
-                "consensus": 25, "argument": 30, "expert_judgement": 45, "unstated": 70},
+      "costs": {"evidence": 0, "evidence_unspecified": 10, "formal_checked": 0, "formal_unchecked": 25,
+                "formal_disputed": 45, "cited": 20, "consensus": 25, "argument_from_claims": 10, "argument": 30,
+                "expert_judgement": 45, "unstated": 70},
       "text": "Rests on {what}",
-      "fix": "Support the claim with evidence the claimset records, or have its proof checked."
+      "fix": "Support the claim with evidence the claimset records, citing the result entries or table rows it reports, or have its proof checked."
     },
     "exploratory_inference": {
       "group": "plan", "count": "kind",
@@ -27,9 +28,15 @@
       "text": "{type} claim tested without a plan recorded beforehand{record}",
       "fix": "Test it again under a lab-record plan or a registration, or publish the lab record that shows every run."
     },
+    "exploratory_principal": {
+      "group": "plan", "count": "kind",
+      "costs": {"with_public_record": 3, "without_public_record": 5},
+      "text": "A principal claim reported without a plan recorded beforehand{record}",
+      "fix": "Plan the measurement in the lab record or a registration before running it, or publish the lab record that shows every run."
+    },
     "plan_anchor": {
       "group": "plan", "count": "kind",
-      "costs": {"git_remote": 3, "none": 10},
+      "costs": {"git_remote": 2, "none": 10},
       "text": "The plan's time is anchored {how}",
       "fix": "Anchor plans with the platform, a timestamp authority (RFC 3161) or a registry."
     },
@@ -66,19 +73,24 @@
     },
     "numbers_without_results": {
       "group": "context", "count": "kind", "costs": {"missing": 5},
-      "text": "Numbers in the statement point to no recorded result",
-      "fix": "List the results, table rows or cells the numbers come from in the support's results."
+      "text": "Numbers in the statement match no recorded result",
+      "fix": "Record each number as a result or table cell of the evidence the claim cites, and list it in the support's results; or correct the number."
     },
     "limitation": {
       "group": "open", "count": "each",
       "costs": {
-        "could_reverse": {"none": 20, "partial": 10, "addressed": 0},
-        "could_bias_magnitude": {"none": 12, "partial": 6, "addressed": 0},
-        "reduces_precision": {"none": 5, "partial": 2, "addressed": 0},
-        "reduces_transferability": {"none": 2, "partial": 1, "addressed": 0}
+        "could_reverse": {"none": 10, "partial": 5, "addressed": 0},
+        "could_bias_magnitude": {"none": 6, "partial": 3, "addressed": 0},
+        "reduces_precision": {"none": 3, "partial": 1, "addressed": 0},
+        "reduces_transferability": {"none": 1, "partial": 0, "addressed": 0}
       },
       "text": "Limitation {id} ({impact}, {mitigation}): {statement}",
       "fix": "Mitigate it with evidence, or narrow the claim's scope so that it no longer applies."
+    },
+    "no_limitation": {
+      "group": "open", "count": "kind", "costs": {"missing": 10},
+      "text": "A principal claim that declares no limitation",
+      "fix": "Declare what could bias, reverse or limit the claim within its scope, each as a limitation that affects it."
     },
     "unchecked_assumption": {
       "group": "open", "count": "each", "cost_each": 3,
