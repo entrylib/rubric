@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import rubric  # noqa: E402
-from rubric.report import biggest, open_problems  # noqa: E402
+from rubric.report import _lowered, biggest, open_problems  # noqa: E402
 
 REAL = json.loads((ROOT / "tests" / "data" / "entrylib_2026.000001_v3.json").read_text(encoding="utf-8"))
 
@@ -27,7 +27,8 @@ class TestReport(unittest.TestCase):
         self.assertEqual(places, sorted(places))
         for pid, p, lowers in problems:
             self.assertIn(f"Check: {p['check']} (group: {p['group']}); costs up to {p['cost']} points.", self.text)
-            self.assertIn("Lowers: " + ", ".join(f"{c} (-{v})" for c, v in lowers.items()) + ".", self.text)
+            self.assertIn("Lowers: " + ", ".join(_lowered(self.scores, pid, c, v) for c, v in lowers.items()) + ".",
+                          self.text)
         for cid, c in self.scores["claims"].items():
             self.assertIn(f"\n{cid}: {c['score']} ({c['band']}): ", self.text)
         paper = self.scores["paper"]
@@ -44,6 +45,17 @@ class TestReport(unittest.TestCase):
         first = ", ".join(f"{c} -{v}" for c, v in top[0][2].items())
         self.assertLess(text.index(f"  {top[0][0]} ({first}): "), text.index("ISSUES, those of the principal"))
         self.assertNotIn("BIGGEST ISSUES", self.text)
+
+    def test_the_paper_line_and_inherited_problems(self):
+        """RUBRIC.md §4.3, §5 (0.3): the mean with the lowest claim; an inherited problem names where it arises."""
+        paper = self.scores["paper"]
+        self.assertIn(f"the mean of its {len(paper['principal'])} principal claims; the lowest is {paper['lowest']} "
+                      f"at {paper['lowest_score']}.", self.text)
+        inherited = [(cid, pid, src) for cid, c in self.scores["claims"].items()
+                     for pid, src in c["inherited"].items()]
+        self.assertTrue(inherited)
+        cid, pid, src = inherited[0]
+        self.assertIn(f"{cid} (-{self.scores['claims'][cid]['costs'][pid]}, from {', '.join(src)})", self.text)
 
     def test_novelty_in_question(self):
         scores = dict(self.scores, novelty={

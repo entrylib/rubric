@@ -6,8 +6,9 @@ How [EntryLib](https://entrylib.org) scores the claimsets it publishes: a **reli
 - `src/rubric/`: the scorer that implements it (Python 3.10+, standard library only); the costs are in `src/rubric/rubric.json`.
 
 ```python
-import json, rubric
-result = rubric.score(json.load(open("claimset.json")))   # a published claimset file
+import json, claimset.validate, rubric
+doc = json.load(open("claimset.json"))                    # a published claimset file
+result = rubric.score(doc, warnings=claimset.validate.validate(doc, published=True).warnings)  # warnings optional
 result["paper"]["score"], result["claims"]["C1"]["dots"]
 ```
 

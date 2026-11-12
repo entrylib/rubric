@@ -27,7 +27,12 @@ def claim(cid="C1", **extra):
     return c
 
 
-def doc(*claims, limitations=(), public_record=False):
+def doc(*claims, limitations=None, public_record=False):
+    """A claimset of these claims. Unless limitations are given, one addressed limitation affects every claim, so that
+    no claim is charged for declaring none (no_limitation)."""
+    if limitations is None:
+        limitations = [{"id": "L0", "impact": "could_reverse", "mitigation": "addressed",
+                        "affects": [c["id"] for c in claims]}]
     d = {"paper": {"exploration": {"lab_record": "A1"}}, "claims": list(claims), "limitations": list(limitations),
          "artefacts": [{"id": "A1", "kind": "lab_record",
                         "availability": {"level": "public" if public_record else "author_only"}}]}
@@ -66,13 +71,40 @@ class TestChecks(unittest.TestCase):
         r = rubric.score(doc(claim(type="descriptive", planning="exploratory")))
         self.assertNotIn("exploratory_inference", problems(r))            # a measurement is not a test
 
+    def test_exploratory_principal(self):
+        """§3.2 (0.3): an exploratory principal claim of any type pays for being unplanned, less than an inference."""
+        for t in ("descriptive", "methodological", "interpretive"):
+            self.assertEqual(problems(rubric.score(doc(claim(type=t, planning="exploratory"))))
+                             ["exploratory_principal"], 5, t)
+        r = rubric.score(doc(claim(type="descriptive", planning="exploratory"), public_record=True))
+        self.assertEqual(problems(r)["exploratory_principal"], 3)
+        self.assertIn("A principal descriptive claim", r["problems"][r["claims"]["C1"]["problems"][0]]["text"])
+        for quiet in (claim(planning="exploratory", role="supporting"), claim(planning="exploratory", type="formal",
+                                                                               support=[{"kind": "formal_proof"}],
+                                                                               verification="peer_checked")):
+            self.assertNotIn("exploratory_principal", problems(rubric.score(doc(quiet))))
+
     def test_plan(self):
-        self.assertEqual(problems(rubric.score(doc(claim(planned_at_anchor="git_remote"))))["plan_anchor"], 3)
-        self.assertEqual(problems(rubric.score(doc(claim(planned_at_anchor="none"))))["plan_anchor"], 10)
-        self.assertEqual(problems(rubric.score(doc(claim(planning="confirmatory_with_deviations"))))
+        causal = {"type": "causal"}                                       # unplanned it would cost 15: no cut
+        self.assertEqual(problems(rubric.score(doc(claim(planned_at_anchor="git_remote"))))["plan_anchor"], 2)
+        self.assertEqual(problems(rubric.score(doc(claim(planned_at_anchor="none", **causal))))["plan_anchor"], 10)
+        self.assertEqual(problems(rubric.score(doc(claim(planning="confirmatory_with_deviations", **causal))))
                          ["plan_deviations"], 5)
-        r = rubric.score(doc(claim(test={"flags": ["code_changed_after_plan", "a", "b"]})))
+        r = rubric.score(doc(claim(test={"flags": ["code_changed_after_plan", "a", "b"]}, **causal)))
         self.assertEqual(problems(r)["plan_flags"], 8)                     # repeated: 5 + 2 + 1
+
+    def test_a_plan_never_costs_more_than_no_plan(self):
+        """§3.2 (0.3): a plan's problems together cost at most what the same claim would cost unplanned."""
+        worst = {"planning": "confirmatory_with_deviations", "planned_at_anchor": "none",
+                 "test": {"flags": ["code_changed_after_plan"]}}
+        for kind, record in (({}, False), ({}, True), ({"type": "causal"}, False), ({"type": "causal"}, True),
+                             ({"role": "supporting"}, False)):
+            planned = rubric.score(doc(claim(**kind, **worst), public_record=record))["claims"]["C1"]["score"]
+            unplanned = rubric.score(doc(claim(**kind, planning="exploratory"), public_record=record))
+            self.assertGreaterEqual(planned, unplanned["claims"]["C1"]["score"], (kind, record))
+        r = rubric.score(doc(claim(**worst)))
+        self.assertEqual(sum(v for k, v in problems(r).items() if k.startswith("plan_")), 5)   # cut to 5, 10 first
+        self.assertEqual(problems(r)["plan_anchor"], 5)
 
     def test_checkable(self):
         self.assertEqual(problems(rubric.score(doc(claim(verifiability="audit_only"))))["verifiability"], 10)
@@ -95,6 +127,18 @@ class TestChecks(unittest.TestCase):
         words = claim(statement="Coverage falls on the [[D6:M4 sample]] in $T_1$ (see E1.T1.r2).",
                       support=[{"kind": "simulation"}])
         self.assertNotIn("numbers_without_results", problems(rubric.score(doc(words))))
+        names = claim(statement="Claims scored by claimset-haiku-2 and GPT-4o on M4.", support=[{"kind": "simulation"}])
+        self.assertNotIn("numbers_without_results", problems(rubric.score(doc(names))))   # names are not numbers
+
+    def test_numbers_by_the_validators_warning_17(self):
+        """§3.4 (0.3): given the validator's warnings, warning 17 on the statement decides; results listed or not."""
+        cited = claim(statement="Coverage is 0.81.", support=[{"kind": "simulation", "evidence": "E1",
+                                                               "results": ["E1.R1"]}])
+        w17 = [{"rule": "W17", "where": "claims:C1.statement", "message": "0.81 ... match no recorded result"}]
+        self.assertEqual(problems(rubric.score(doc(cited), warnings=w17))["numbers_without_results"], 5)
+        self.assertNotIn("numbers_without_results", problems(rubric.score(doc(cited), warnings=[])))
+        bare = claim(statement="Coverage is 0.81.", support=[{"kind": "simulation"}])
+        self.assertNotIn("numbers_without_results", problems(rubric.score(doc(bare), warnings=[])))
 
     def test_open_problems(self):
         lims = [{"id": "L1", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]},
@@ -102,7 +146,7 @@ class TestChecks(unittest.TestCase):
                 {"id": "L3", "impact": "reduces_precision", "mitigation": "addressed", "affects": ["C1"]},
                 {"id": "L4", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]}]
         r = rubric.score(doc(claim(), limitations=lims))
-        self.assertEqual(r["claims"]["C1"]["score"], 69)                   # repeated: 20 + 10 + 1 (6 halved twice)
+        self.assertEqual(r["claims"]["C1"]["score"], 84)                   # repeated: 10 + 5 + 1 (3 halved twice)
         a = {"id": "C9", "statement": "Errors are Gaussian.", "type": "descriptive", "role": "supporting",
              "support": [{"kind": "assumption"}], "assumption_category": "statistical", "check": "unchecked"}
         r = rubric.score(doc(claim(assumptions=["C9"]), a))
@@ -111,6 +155,70 @@ class TestChecks(unittest.TestCase):
         self.assertNotIn("C9", r["claims"])
         a["check"] = "tested"
         self.assertEqual(rubric.score(doc(claim(assumptions=["C9"]), a))["claims"]["C1"]["score"], 100)
+
+    def test_declaring_a_limitation_never_costs_more_than_declaring_none(self):
+        """§3.5 (0.3): no_limitation, and one declared limitation of any impact costs at most as much."""
+        silent = rubric.score(doc(claim(), limitations=[]))
+        self.assertEqual(problems(silent)["no_limitation"], 10)
+        for impact in ("could_reverse", "could_bias_magnitude", "reduces_precision", "reduces_transferability"):
+            declared = rubric.score(doc(claim(), limitations=[{"id": "L1", "impact": impact, "mitigation": "none",
+                                                                 "affects": ["C1"]}]))
+            self.assertNotIn("no_limitation", problems(declared))
+            self.assertGreaterEqual(declared["claims"]["C1"]["score"], silent["claims"]["C1"]["score"], impact)
+        premise = claim("C2", role="supporting")                       # one on what it rests on is declared too
+        r = rubric.score(doc(claim("C1", depends_on=["C2"]), premise,
+                             limitations=[{"id": "L1", "impact": "reduces_precision", "mitigation": "none",
+                                           "affects": ["C2"]}]))
+        self.assertNotIn("no_limitation", problems(r))
+        for quiet in (claim(role="supporting"), claim(type="formal", support=[{"kind": "formal_proof"}],
+                                                      verification="peer_checked")):
+            self.assertNotIn("no_limitation", problems(rubric.score(doc(quiet, limitations=[]))))
+
+    def test_a_restated_competing_interest_costs_nothing(self):
+        """§3.5 (0.3): a limitation with the validator's warning 45 is not charged, nor does it count as declared."""
+        lims = [{"id": "L1", "impact": "could_bias_magnitude", "mitigation": "none", "affects": ["C1"]}]
+        w45 = [{"rule": "W45", "where": "limitations:L1.statement", "message": "restates the competing interest"}]
+        self.assertEqual(problems(rubric.score(doc(claim(), limitations=lims)))["limitation"], 6)
+        r = rubric.score(doc(claim(), limitations=lims), warnings=w45)
+        self.assertNotIn("limitation", problems(r))
+        self.assertEqual(problems(r)["no_limitation"], 10)
+
+    def test_evidence_names_the_observations(self):
+        """§3.1 (0.3): naming evidence without its observations costs 10; a result, a row or data rows cost nothing."""
+        ev = {"id": "E1", "results": [{"id": "R1"}], "tables": [{"id": "T1"}]}
+        for results, cost in ((None, 10), (["E1.T1"], 10), (["E1.R1"], 0), (["E1.T1.r2"], 0), (["A4#row=12"], 0)):
+            s = {"kind": "empirical_quant", "evidence": "E1", **({"results": results} if results else {})}
+            d = doc(claim(support=[s]))
+            d["evidence"] = [ev]
+            self.assertEqual(problems(rubric.score(d)).get("support_kind", 0), cost, results)
+        d = doc(claim(support=[{"kind": "simulation", "evidence": "E2"}]))
+        d["evidence"] = [{"id": "E2", "estimate": 0.4}]                    # nothing but an estimate: specific
+        self.assertNotIn("support_kind", problems(rubric.score(d)))
+        qual = doc(claim(support=[{"kind": "empirical_qual", "evidence": "E1"}]))
+        self.assertNotIn("support_kind", problems(rubric.score(qual)))
+
+    def test_an_argument_from_scored_claims(self):
+        """§3.1 (0.3): an argument from claims the file scores costs 10; from nothing, or assumptions only, 30."""
+        arg = {"support": [{"kind": "argument"}], "type": "interpretive"}
+        premise = claim("C2", role="supporting")
+        assumption = {"id": "C3", "statement": "x", "type": "descriptive", "support": [{"kind": "assumption"}]}
+        self.assertEqual(problems(rubric.score(doc(claim("C1", depends_on=["C2"], **arg), premise)))["support_kind"],
+                         10)
+        self.assertEqual(problems(rubric.score(doc(claim("C1", **arg))))["support_kind"], 30)
+        self.assertEqual(problems(rubric.score(doc(claim("C1", depends_on=["C3"], **arg), assumption)))
+                         ["support_kind"], 30)
+
+    def test_a_studied_api_model_is_not_a_dependency(self):
+        """§3.3 (0.3): api_model_dependency costs nothing when the API-only model is the subject or a baseline."""
+        def scored(role):
+            d = doc(claim(support=[{"kind": "empirical_quant", "evidence": "E1", "results": ["E1.R1"]}],
+                          verifiability_flags=["api_model_dependency"]))
+            d["models"] = [{"id": "M1", "weights": "api_only"}, {"id": "M2", "weights": "open"}]
+            d["evidence"] = [{"id": "E1", "results": [{"id": "R1"}],
+                              "models": [{"model": "M1", "role": role}, {"model": "M2", "role": "instrument"}]}]
+            return problems(rubric.score(d)).get("verifiability_flags", 0)
+        self.assertEqual((scored("subject"), scored("baseline")), (0, 0))
+        self.assertEqual((scored("instrument"), scored("annotator"), scored(None)), (5, 5, 5))
 
     def test_every_check_is_in_the_rubric_document(self):
         text = (ROOT / "RUBRIC.md").read_text(encoding="utf-8")
@@ -132,7 +240,7 @@ class TestCounting(unittest.TestCase):
             lims = [{"id": "L1", "impact": "could_reverse", "mitigation": "none", "affects": ["C1"]},
                     {"id": "L2", "impact": "could_reverse", "mitigation": mitigation, "affects": ["C1"]}]
             return rubric.score(doc(claim(), limitations=lims))["claims"]["C1"]["score"]
-        self.assertEqual([two("none"), two("partial"), two("addressed")], [70, 75, 80])   # every step counts
+        self.assertEqual([two("none"), two("partial"), two("addressed")], [85, 88, 90])   # every step counts
         self.assertGreater(two("partial"), two("none"))
 
     def test_a_problem_states_the_most_it_costs_a_claim(self):
@@ -145,7 +253,7 @@ class TestCounting(unittest.TestCase):
                        if r["problems"][pid] is p]
             self.assertEqual(p["cost"], max(charged))
         l1 = next(pid for pid, p in r["problems"].items() if p["objects"] == ["L1"])
-        self.assertEqual(r["problems"][l1]["cost"], 20)
+        self.assertEqual(r["problems"][l1]["cost"], 10)
 
 
     def test_a_claim_pays_for_what_it_rests_on_once(self):
@@ -156,16 +264,26 @@ class TestCounting(unittest.TestCase):
         cyclic = rubric.score(doc(claim("C1", depends_on=["C2"]), claim("C2", depends_on=["C1"], scope={})))
         self.assertEqual(cyclic["claims"]["C1"]["score"], 90)
 
+    def test_inherited_problems_are_reported_with_the_claim_they_arise_in(self):
+        """§2, §4.3 (0.3): a problem lists every claim it lowers; a claim names what it inherits and from where."""
+        r = rubric.score(doc(claim("C1", depends_on=["C2"]), claim("C2", role="supporting", scope={})))
+        pid = next(p for p, x in r["problems"].items() if x["check"] == "no_scope")
+        self.assertEqual((r["problems"][pid]["claims"], r["problems"][pid]["arises_in"]), (["C1", "C2"], ["C2"]))
+        self.assertEqual(r["claims"]["C1"]["inherited"], {pid: ["C2"]})
+        self.assertEqual(r["claims"]["C2"]["inherited"], {})
+        for p, x in r["problems"].items():                                # the two lists agree
+            self.assertEqual(x["claims"], sorted(c for c, item in r["claims"].items() if p in item["costs"]))
+
     def test_dots(self):
-        r = rubric.score(doc(claim(planned_at_anchor="git_remote", scope={}, verifiability="unverifiable")))
+        r = rubric.score(doc(claim(planned_at_anchor="none", scope={}, verifiability="unverifiable")))
         self.assertEqual(r["claims"]["C1"]["dots"],
                          {"support": "green", "plan": "amber", "checkable": "red", "context": "amber", "open": "green"})
 
-    def test_paper_is_its_lowest_principal_claim(self):
+    def test_paper_is_the_mean_of_its_principal_claims(self):
         r = rubric.score(doc(claim("C1", scope={}), claim("C2", scope={}, relations=[]),
                              claim("C3", role="secondary", support=[{"kind": "unstated"}])))
-        self.assertEqual(r["paper"]["score"], 85)
-        self.assertEqual(r["paper"]["lowest"], "C2")
+        self.assertEqual(r["paper"]["score"], 88)                          # (90 + 85) / 2, rounded half up
+        self.assertEqual((r["paper"]["lowest"], r["paper"]["lowest_score"]), ("C2", 85))
         checks = [r["problems"][p]["check"] for p in r["paper"]["problems"]]
         self.assertEqual(sorted(checks), ["no_prior_work", "no_scope"])  # a secondary claim is not the paper's
         no_scope = next(p for p in r["paper"]["problems"] if r["problems"][p]["check"] == "no_scope")
@@ -176,9 +294,10 @@ class TestCounting(unittest.TestCase):
         r = rubric.score(REAL)
         self.assertEqual(r["paper"]["principal"], ["C1", "C2", "C3", "C4", "C5", "C6"])
         lowest = r["paper"]["lowest"]
-        self.assertEqual(r["paper"]["score"], min(r["claims"][c]["score"] for c in r["paper"]["principal"]))
-        self.assertEqual(r["claims"][lowest]["score"], r["paper"]["score"])
-        self.assertEqual(r["claims"]["C1"]["score"], 94)
+        scores = [r["claims"][c]["score"] for c in r["paper"]["principal"]]
+        self.assertEqual(r["paper"]["score"], int(sum(scores) / len(scores) + 0.5))
+        self.assertEqual(r["claims"][lowest]["score"], min(scores))
+        self.assertEqual(r["paper"]["lowest_score"], min(scores))
         for c in r["claims"].values():
             self.assertEqual(c["score"], 100 - sum(c["costs"].values()))
 

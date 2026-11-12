@@ -15,6 +15,12 @@ def _sentence(words):
     return words if words.rstrip().endswith((".", "!", "?")) else words + "."
 
 
+def _lowered(scores, pid, cid, cost):
+    """"C5 (-10)", or "C5 (-10, from C3)" for a problem the claim inherits from what it rests on (§2)."""
+    source = ((scores.get("claims") or {}).get(cid) or {}).get("inherited", {}).get(pid)
+    return f"{cid} (-{cost}, from {', '.join(source)})" if source else f"{cid} (-{cost})"
+
+
 def open_problems(scores):
     """[(id, problem, {claim id: cost})] of every problem that lowers some claim's score, in the order of score()
     (those of the principal claims first, most costly first)."""
@@ -35,7 +41,11 @@ def report(scores, biggest_n=0):
     """The report of RUBRIC.md §4.3, as text ending in a newline."""
     out = []
     paper = scores.get("paper")
-    if paper:
+    if paper and "lowest_score" in paper:                       # rubric 0.3: the mean, with the lowest shown
+        n = len(paper.get("principal") or [])
+        out.append(f"PAPER: reliability {paper['score']} ({paper['band']}), the mean of its {n} principal claim"
+                   f"{'s' if n != 1 else ''}; the lowest is {paper['lowest']} at {paper['lowest_score']}.")
+    elif paper:
         out.append(f"PAPER: reliability {paper['score']} ({paper['band']}), the score of its lowest principal claim, "
                    f"{paper['lowest']}. Raising the lowest principal claim raises the paper.")
     else:
@@ -62,7 +72,7 @@ def report(scores, biggest_n=0):
     for pid, p, lowers in problems:
         out += ["", f"{pid}. {_sentence(p['text'])}",
                 f"  Check: {p['check']} (group: {p['group']}); costs up to {p['cost']} points.",
-                f"  Lowers: {', '.join(f'{c} (-{cost})' for c, cost in lowers.items())}."]
+                f"  Lowers: {', '.join(_lowered(scores, pid, c, cost) for c, cost in lowers.items())}."]
         if p.get("objects"):
             out.append(f"  Concerns: {', '.join(p['objects'])}.")
         out.append(f"  To fix: {p['fix']}")
