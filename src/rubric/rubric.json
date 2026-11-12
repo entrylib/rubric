@@ -31,7 +31,7 @@
     "exploratory_principal": {
       "group": "plan", "count": "kind",
       "costs": {"with_public_record": 3, "without_public_record": 5},
-      "text": "A principal {type} claim reported without a plan recorded beforehand{record}",
+      "text": "A principal claim reported without a plan recorded beforehand{record}",
       "fix": "Plan the measurement in the lab record or a registration before running it, or publish the lab record that shows every run."
     },
     "plan_anchor": {

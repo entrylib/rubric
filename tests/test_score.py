@@ -78,7 +78,12 @@ class TestChecks(unittest.TestCase):
                              ["exploratory_principal"], 5, t)
         r = rubric.score(doc(claim(type="descriptive", planning="exploratory"), public_record=True))
         self.assertEqual(problems(r)["exploratory_principal"], 3)
-        self.assertIn("A principal descriptive claim", r["problems"][r["claims"]["C1"]["problems"][0]]["text"])
+        self.assertIn("A principal claim reported without a plan", r["problems"][r["claims"]["C1"]["problems"][0]]["text"])
+        mixed = rubric.score(doc(claim("C1", planning="exploratory"),
+                                 claim("C2", planning="exploratory", type="methodological")))
+        texts = [p["text"] for p in mixed["problems"].values() if p["check"] == "exploratory_principal"]
+        self.assertEqual(len(texts), 1)
+        self.assertNotIn("descriptive", texts[0])           # one problem for both claims: it names no claim's type
         for quiet in (claim(planning="exploratory", role="supporting"), claim(planning="exploratory", type="formal",
                                                                                support=[{"kind": "formal_proof"}],
                                                                                verification="peer_checked")):
