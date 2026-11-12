@@ -98,6 +98,19 @@ class TestChecks(unittest.TestCase):
         r = rubric.score(doc(claim(test={"flags": ["code_changed_after_plan", "a", "b"]}, **causal)))
         self.assertEqual(problems(r)["plan_flags"], 8)                     # repeated: 5 + 2 + 1
 
+    def test_a_planned_estimate_is_planned(self):
+        """§3.2 (0.4): a planned estimate costs nothing for being exploratory; its anchor and flags cost as a test's."""
+        est = {"planning": "planned_estimate", "estimate": {"estimands": {"m": {"variable": "MASE"}}, "lab_plan": "PL1"}}
+        found = problems(rubric.score(doc(claim(**est))))
+        self.assertNotIn("exploratory_principal", found)
+        self.assertNotIn("plan_anchor", found)
+        unplanned = rubric.score(doc(claim(planning="exploratory")))["claims"]["C1"]["score"]
+        self.assertGreater(rubric.score(doc(claim(**est)))["claims"]["C1"]["score"], unplanned)
+        flagged = dict(est, planned_at_anchor="git_remote")
+        flagged["estimate"] = dict(est["estimate"], flags=["diagnostic_missing"])
+        found = problems(rubric.score(doc(claim(type="causal", **flagged))))
+        self.assertEqual((found["plan_anchor"], found["plan_flags"]), (2, 5))
+
     def test_a_plan_never_costs_more_than_no_plan(self):
         """§3.2 (0.3): a plan's problems together cost at most what the same claim would cost unplanned."""
         worst = {"planning": "confirmatory_with_deviations", "planned_at_anchor": "none",
