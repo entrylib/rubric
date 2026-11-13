@@ -33,8 +33,7 @@ normative and versioned. Every score records the version it was computed under.
 pip install entrylib-rubric
 ```
 
-The module it installs is `rubric`. Install it by this name: `pip install rubric` gets an unrelated package. Python
-3.10+, standard library only.
+It needs Python 3.10 or later and nothing beyond the standard library. In Python, import it as `rubric`.
 
 ## Use
 
