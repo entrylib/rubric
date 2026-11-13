@@ -1,0 +1,70 @@
+# Stage 2 of a release: upload to PyPI the files that stage 1 (build.yml) attached to the release.
+#
+# Runs when a release is published (a draft from build.yml, reviewed and published by a maintainer; publishing
+# creates the tag on the commit build.yml built). It downloads the release's sdist and wheel, checks that they are
+# the version the tag names and that build.yml built them from that commit on the default branch (their build
+# attestation), and uploads them with PyPI trusted publishing: no token is stored anywhere.
+#
+# One-time setup on PyPI (https://pypi.org/manage/account/publishing/): a trusted publisher for project `entrylib-rubric`,
+# owner `entrylib`, repository `rubric`, workflow `release.yml`, environment `pypi`. On GitHub, an environment
+# named `pypi` (Settings > Environments), with required reviewers if every upload should be approved once more.
+
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-26.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/entrylib-rubric/${{ steps.files.outputs.version }}/
+    permissions:
+      contents: read           # download the release's files
+      attestations: read       # verify where they were built
+      id-token: write          # trusted publishing
+    steps:
+      - name: Download the release's files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          gh release download "$TAG" --dir dist --pattern '*.whl' --pattern '*.tar.gz'
+          ls -l dist
+          expected="entrylib_rubric-${version}-py3-none-any.whl entrylib_rubric-${version}.tar.gz"
+          for f in $expected; do
+            test -f "dist/$f" || { echo "::error::release $TAG has no $f (attached by build.yml)"; exit 1; }
+          done
+          found=$(ls dist | wc -l)
+          if [ "$found" -ne 2 ]; then
+            echo "::error::release $TAG carries $found distribution files; expected exactly: $expected"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: The files were built by build.yml from the tagged commit, on the default branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          commit=$(gh api "repos/$REPO/commits/$TAG" --jq .sha)
+          echo "$TAG is commit $commit"
+          for f in dist/*; do
+            gh attestation verify "$f" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/build.yml" \
+              --source-ref "refs/heads/$DEFAULT_BRANCH" --source-digest "$commit"
+          done
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
