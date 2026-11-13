@@ -1,19 +1,78 @@
 # EntryLib scoring rubric
 
-How [EntryLib](https://entrylib.org) scores the claimsets it publishes: a **reliability** score for every claim and for the paper, and a **novelty** label with a close-match check. The rules are public so that anyone can see why a claimset scored as it did, and what would raise it.
+[![PyPI version](https://img.shields.io/pypi/v/entrylib-rubric)](https://pypi.org/project/entrylib-rubric/)
+[![Tests](https://github.com/entrylib/rubric/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/entrylib/rubric/actions/workflows/tests.yml)
+[![Downloads](https://img.shields.io/pypi/dm/entrylib-rubric)](https://pypistats.org/packages/entrylib-rubric)
+[![License](https://img.shields.io/github/license/entrylib/rubric)](https://github.com/entrylib/rubric/blob/main/LICENSE)
+[![Python versions](https://img.shields.io/pypi/pyversions/entrylib-rubric)](https://pypi.org/project/entrylib-rubric/)
 
-- [RUBRIC.md](https://github.com/entrylib/rubric/blob/main/RUBRIC.md): the rubric, normative and versioned.
-- `src/rubric/`: the scorer that implements it (Python 3.10+, standard library only); the costs are in `src/rubric/rubric.json`.
+How [EntryLib](https://entrylib.org) scores the [claimsets](https://github.com/entrylib/claimset) it publishes, as
+public rules and the code that applies them. Anyone can compute the same scores, see why a claimset scored as it did,
+and what would raise it.
 
-```python
-import json, claimset.validate, rubric
-doc = json.load(open("claimset.json"))                    # a published claimset file
-result = rubric.score(doc, warnings=claimset.validate.validate(doc, published=True).warnings)  # warnings optional
-result["paper"]["score"], result["claims"]["C1"]["dots"]
+## What it scores
+
+- **Reliability**, from 0 to 100, for every claim and for the paper: how far the claimset's own record supports each
+  claim. A claim starts at 100 and loses points for each problem the checks find in it and in the claims it rests on:
+  support that cannot be checked, a test not planned before it ran, a missing scope, limitations still open, and so
+  on. Each claim has a band (high 80 and over, medium 60 to 79, low under 60) and five dots, one per group of checks
+  (support, plan, checkable, context, open problems). The paper's score is the mean of its principal claims, shown
+  with its lowest one.
+- **Novelty**, as a label: the authors' own (no prior work found, extension, replication, refutation), with a check
+  for close matches among the claims already published on EntryLib that the claimset does not acknowledge.
+
+The scores rest only on the claimset file (and, for novelty, on the published claims they are compared with). They
+check the record, not the science: a band says how well the record supports a claim, never whether the claim is true.
+
+The rules, with every check and its cost: [RUBRIC.md](https://github.com/entrylib/rubric/blob/main/RUBRIC.md),
+normative and versioned. Every score records the version it was computed under.
+
+## Install
+
+```bash
+pip install entrylib-rubric
 ```
 
-`rubric.report(result)` gives the scores as plain text: every issue that lowers a score and what would fix it. Before submitting, `claimset score paper.claimset.json` ([claimset](https://github.com/entrylib/claimset)) scores a claimset this way on your own machine, as it would be scored once published.
+The module it installs is `rubric`. Install it by this name: `pip install rubric` gets an unrelated package. Python
+3.10+, standard library only.
 
-Install: `pip install git+https://github.com/entrylib/rubric`. The portal installs it the same way and records the rubric version with every score.
+## Use
 
-Planned: an AI reviewer ([#1](https://github.com/entrylib/rubric/issues/1)) and reproduction from artefacts ([#2](https://github.com/entrylib/rubric/issues/2)).
+Before submitting a claimset, score it as it would be scored once published, with the
+[claimset](https://pypi.org/project/claimset/) command-line tool:
+
+```bash
+claimset score paper.claimset.json              # reliability, and every issue with what would fix it
+claimset score paper.claimset.json --novelty    # with the close-match check against EntryLib
+```
+
+From Python:
+
+```python
+import json
+import rubric
+
+doc = json.load(open("paper.claimset.json"))
+scores = rubric.score(doc)
+scores["paper"]["score"], scores["paper"]["band"]   # 85, 'high'
+scores["claims"]["C1"]["dots"]                       # {'support': 'green', 'plan': 'green', ...}
+print(rubric.report(scores))                         # every problem, what it costs and what would remove it
+```
+
+- `rubric.score(doc, warnings=None)`: the scores. `warnings` are the claimset validator's for the file
+  (`claimset.validate.validate(doc, published=True).warnings`); two checks use them.
+- `rubric.report(scores, biggest_n=0, name="reliability")`: the scores as plain text, for authors and their agents.
+- `rubric.assess(doc, find=None, warnings=None)`: the scores with novelty; `find(statement)` returns the published
+  claims to compare with.
+- `rubric.VERSION`: the rubric version every score records.
+
+## Changing the rubric
+
+A change to a cost, a band, a check or a rule is a new rubric version: `RUBRIC.md` first, then
+`src/rubric/rubric.json` and the scorer, then the tests ([AGENTS.md](https://github.com/entrylib/rubric/blob/main/AGENTS.md)).
+Planned: an AI reviewer ([#1](https://github.com/entrylib/rubric/issues/1)) and reproduction from artefacts
+([#2](https://github.com/entrylib/rubric/issues/2)).
+
+## Licence
+
+Apache 2.0.
