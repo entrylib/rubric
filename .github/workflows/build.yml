@@ -1,0 +1,148 @@
+# Stage 1 of a release: build the distributions and draft the GitHub release.
+#
+# Run it by hand (Actions > build > Run workflow) on the default branch, after setting the version: `version` in
+# pyproject.toml (the package) starts with `version` in src/rubric/rubric.json (the rubric, recorded with every
+# score), which the title of RUBRIC.md names (AGENTS.md). It runs the tests, builds the sdist and the wheel, checks
+# them, installs the wheel and scores a published claimset with it, attests where they were built, and creates a
+# *draft* release v<version> for the commit it built, with both files attached. Nothing reaches PyPI here:
+# publishing the draft on GitHub creates the tag v<version> on that commit and starts stage 2 (release.yml), which
+# uploads exactly these files.
+#
+# Run again for the same version while the release is still a draft, it replaces the draft's files and commit.
+# A version already published is never rebuilt: raise the version first. With "draft" unticked, or on another
+# branch, it only builds and checks.
+
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: "Draft the GitHub release v<version> (default branch only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
+  dist:
+    needs: tests
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: The package's version follows the rubric's
+        id: version
+        run: |
+          version=$(python - <<'PY'
+          import json, re, tomllib
+          v = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          rubric = json.load(open("src/rubric/rubric.json", encoding="utf-8"))["version"]
+          title = open("RUBRIC.md", encoding="utf-8").readline()
+          if not v.startswith(rubric + "."):
+              raise SystemExit(f"pyproject.toml gives {v}, which does not start with the rubric's version {rubric} "
+                               f"(src/rubric/rubric.json)")
+          if not re.search(rf"\bv{re.escape(rubric)}\b", title):
+              raise SystemExit(f"RUBRIC.md's title does not name v{rubric}: {title.strip()}")
+          print(v)
+          PY
+          )
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version $version" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade build twine
+          python -m build
+          python -m twine check --strict dist/*
+          ls -l dist
+
+      - name: Try the wheel in a clean environment
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python -m venv /tmp/try
+          /tmp/try/bin/pip install --disable-pip-version-check dist/*.whl
+          cd "$RUNNER_TEMP"
+          /tmp/try/bin/python - "$GITHUB_WORKSPACE/tests/data/entrylib_2026.000001_v3.json" <<'PY'
+          import json, os, sys
+          from importlib.metadata import version
+          import rubric
+          assert version("entrylib-rubric") == os.environ["VERSION"], version("entrylib-rubric")
+          assert os.environ["VERSION"].startswith(rubric.VERSION + "."), rubric.VERSION
+          doc = json.load(open(sys.argv[1], encoding="utf-8"))
+          scores = rubric.score(doc)
+          print(rubric.report(scores))
+          PY
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  draft:
+    if: inputs.draft && github.ref_name == github.event.repository.default_branch
+    needs: dist
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write          # create the release
+      id-token: write          # sign the attestation
+      attestations: write      # store it
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+      - name: The version is not released yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: v${{ needs.dist.outputs.version }}
+        run: |
+          state=$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || echo none)
+          if [ "$state" = "false" ]; then
+            echo "::error::release $TAG is already published; raise the version in pyproject.toml (and in src/rubric/rubric.json if the rubric changed)"
+            exit 1
+          fi
+          if [ "$state" = "none" ] && gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "::error::tag $TAG exists without a draft release; raise the version, or delete the tag if nothing was released from it"
+            exit 1
+          fi
+
+      - name: Attest the build
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/*
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: v${{ needs.dist.outputs.version }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then     # a draft from an earlier run: this run replaces it
+            gh release edit "$TAG" --target "$GITHUB_SHA"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --draft --target "$GITHUB_SHA" --generate-notes \
+              --title "entrylib-rubric ${TAG#v}"
+          fi
+          echo "Draft release $TAG for ${GITHUB_SHA:0:12}: review it on GitHub and publish it to upload to PyPI." \
+            >> "$GITHUB_STEP_SUMMARY"
