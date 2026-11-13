@@ -246,6 +246,112 @@ class TestChecks(unittest.TestCase):
         self.assertRegex(text, rf"\*\*{re.escape(rubric.VERSION)}\*\*")
 
 
+class TestReview(unittest.TestCase):
+    """§3.1 and §3.2 (0.5): reviews, from the claimset extension `review`."""
+
+    def review(self, read="full_text", extract=None, searches=None, protocol=None, flags=None, **extra):
+        c = claim(support=[{"kind": "cited", "reference": "B1", "locator": "Section 5"}], planning="exploratory",
+                  type="methodological", **extra)
+        c["ext"] = {"review": {"kind": "summary"}}
+        if extract is not None:
+            c["ext"]["review"]["extracts"] = [dict({"reference": "B1"}, **extract)]
+        d = doc(c)
+        d["references"] = [{"id": "B1", "target": "10.1198/jasa.2011.r10138", "id_type": "doi"}]
+        if read:
+            d["references"][0]["ext"] = {"review": {"read": read}}
+        d["artefacts"].append({"id": "A2", "kind": "data", "reference": "B1"})
+        block = {k: v for k, v in (("searches", searches), ("protocol", protocol), ("flags", flags)) if v}
+        if block:
+            d["paper"]["ext"] = {"review": block}
+        return problems(rubric.score(d))
+
+    def test_cited_by_how_the_work_was_read(self):
+        quoted = {"exact": "the squared error scoring function is consistent for the mean", "artefact": "A2"}
+        for read, extract, cost in [("full_text", quoted, 0), ("full_text", {"text": "squared error is consistent"}, 5),
+                                    ("full_text", None, 15), ("abstract", quoted, 20), ("secondary", None, 20),
+                                    (None, quoted, 20),
+                                    ("full_text", {"exact": "words", "artefact": "A9"}, 5)]:   # no such artefact
+            with self.subTest(read=read, extract=extract):
+                self.assertEqual(self.review(read, extract).get("support_kind", 0), cost)
+
+    def test_saying_how_a_work_was_read_never_costs_more(self):
+        unsaid = self.review(None)["support_kind"]
+        for read in ("full_text", "abstract", "secondary"):
+            self.assertLessEqual(self.review(read).get("support_kind", 0), unsaid, read)
+
+    def test_an_extract_for_another_work_does_not_count(self):
+        self.assertEqual(self.review("full_text", {"reference": "B2", "exact": "x", "artefact": "A2"})["support_kind"], 15)
+
+    def test_review_search(self):
+        search = [{"source": "Google Scholar", "query": "consistent scoring", "date": "2026-11-13", "results": 12}]
+        protocol = {"sources": ["Google Scholar"], "include": ["methodological papers"]}
+        found = self.review()
+        self.assertEqual(found["review_search"], 5)
+        self.assertNotIn("exploratory_principal", found)                  # instead of it, never on top
+        self.assertEqual(self.review(searches=search)["review_search"], 2)
+        self.assertNotIn("review_search", self.review(searches=search, protocol=protocol))
+        flagged = self.review(searches=search, protocol=protocol,
+                              flags=["searched_before_protocol", "protocol_changed_after_search"])
+        self.assertEqual(flagged["review_search"], 3)                     # repeated: 2 + 1
+        self.assertEqual(self.review(searches=search, flags=["searched_before_protocol", "protocol_changed_after_search"])
+                         ["review_search"], 4)                            # no protocol and two flags: 2 + 1 + 1
+        self.assertLessEqual(self.review(searches=search, flags=["a", "b", "c", "d"])["review_search"], 5)
+
+    def test_a_support_problem_names_each_kind(self):
+        """§4.3 (0.5): one support problem over claims with different support names each kind, the costliest first."""
+        r = rubric.score(doc(claim("C1", support=[{"kind": "cited"}]), claim("C2", support=[{"kind": "argument"}])))
+        text = next(p["text"] for p in r["problems"].values() if p["check"] == "support_kind")
+        self.assertEqual(text, "Rests on argument only; cited work only")
+        self.assertEqual((r["claims"]["C1"]["score"], r["claims"]["C2"]["score"]), (80, 70))   # scores unchanged
+
+    def test_without_the_extension_nothing_changes(self):
+        c = claim(support=[{"kind": "cited", "reference": "B1"}], planning="exploratory", type="methodological")
+        found = problems(rubric.score(doc(c)))
+        self.assertEqual((found["support_kind"], found["exploratory_principal"]), (20, 5))
+        self.assertNotIn("review_search", found)
+
+
+class TestBackground(unittest.TestCase):
+    """§2 and §3.1 (0.5): stating the earlier work a finding rests on never costs more than leaving it out, beyond what
+    an unchecked assumption costs; a cited claim published on EntryLib costs by its score there."""
+
+    def premise(self, **extra):
+        return claim("C2", role="supporting", support=[{"kind": "cited", "reference": "B1"}], **extra)
+
+    def test_a_cited_premise_costs_a_claim_with_evidence_at_most_3(self):
+        alone = rubric.score(doc(claim()))["claims"]["C1"]["score"]
+        r = rubric.score(doc(claim(depends_on=["C2"]), self.premise()))
+        self.assertEqual(r["claims"]["C1"]["score"], alone - 3)
+        self.assertEqual(r["claims"]["C2"]["score"], 80)                      # the premise keeps its own score
+
+    def test_a_quoted_premise_costs_nothing(self):
+        d = doc(claim(depends_on=["C2"]), self.premise())
+        d["claims"][1]["ext"] = {"review": {"extracts": [{"reference": "B1", "exact": "w", "artefact": "A2"}]}}
+        d["references"] = [{"id": "B1", "target": "10.1/x", "id_type": "doi", "ext": {"review": {"read": "full_text"}}}]
+        d["artefacts"].append({"id": "A2", "kind": "data"})
+        self.assertEqual(rubric.score(d)["claims"]["C1"]["score"], 100)
+
+    def test_an_argument_from_cited_premises_pays_in_full(self):
+        rec = claim(depends_on=["C2"], support=[{"kind": "argument", "warrant": "W1"}])
+        self.assertEqual(problems(rubric.score(doc(rec, self.premise())))["support_kind"], 20)   # a review's recommendation
+
+    def test_other_premises_are_not_capped(self):
+        weak = claim("C2", role="supporting", support=[{"kind": "expert_judgement"}])
+        self.assertEqual(problems(rubric.score(doc(claim(depends_on=["C2"]), weak)))["support_kind"], 45)
+
+    def test_a_cited_claim_costs_by_its_score(self):
+        target = "entrylib:2026.000014@v2#C3"
+        c = claim(support=[{"kind": "cited", "target": target, "id_type": "claimset"}])
+        self.assertEqual(problems(rubric.score(doc(c), cited={target: 92}))["support_kind"], 8)
+        self.assertNotIn("support_kind", problems(rubric.score(doc(c), cited={target: 100})))
+        self.assertEqual(problems(rubric.score(doc(c), cited={target: 40}))["support_kind"], 20)   # never above citing
+        self.assertEqual(problems(rubric.score(doc(c)))["support_kind"], 20)                      # no score supplied
+        via_ref = doc(claim(support=[{"kind": "cited", "reference": "B1"}]))
+        via_ref["references"] = [{"id": "B1", "target": target, "id_type": "claimset"}]
+        self.assertEqual(problems(rubric.score(via_ref, cited={target: 85}))["support_kind"], 15)
+        self.assertEqual(problems(rubric.assess(doc(c), cited={target: 92}))["support_kind"], 8)
+
+
 class TestCounting(unittest.TestCase):
     def test_repeated_problems(self):
         from rubric.score import repeated

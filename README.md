@@ -58,10 +58,11 @@ scores["claims"]["C1"]["dots"]                       # {'support': 'green', 'pla
 print(rubric.report(scores))                         # every problem, what it costs and what would remove it
 ```
 
-- `rubric.score(doc, warnings=None)`: the scores. `warnings` are the claimset validator's for the file
-  (`claimset.validate.validate(doc, published=True).warnings`); two checks use them.
+- `rubric.score(doc, warnings=None, cited=None)`: the scores. `warnings` are the claimset validator's for the file
+  (`claimset.validate.validate(doc, published=True).warnings`); two checks use them. `cited` maps the global IDs of
+  claims published on EntryLib that the file cites, as it writes them, to their scores there; the site supplies them.
 - `rubric.report(scores, biggest_n=0, name="reliability")`: the scores as plain text, for authors and their agents.
-- `rubric.assess(doc, find=None, warnings=None)`: the scores with novelty; `find(statement)` returns the published
+- `rubric.assess(doc, find=None, warnings=None, cited=None)`: the scores with novelty; `find(statement)` returns the published
   claims to compare with.
 - `rubric.VERSION`: the rubric version every score records.
 
