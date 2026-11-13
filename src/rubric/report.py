@@ -37,16 +37,17 @@ def biggest(scores, n=3):
     return sorted(open_problems(scores), key=lambda x: -max(x[2].values()))[:n]
 
 
-def report(scores, biggest_n=0):
-    """The report of RUBRIC.md §4.3, as text ending in a newline."""
+def report(scores, biggest_n=0, name="reliability"):
+    """The report of RUBRIC.md §4.3, as text ending in a newline. `name`: what the score is called, for a site that
+    shows it under another name (§4.3)."""
     out = []
     paper = scores.get("paper")
     if paper and "lowest_score" in paper:                       # rubric 0.3: the mean, with the lowest shown
         n = len(paper.get("principal") or [])
-        out.append(f"PAPER: reliability {paper['score']} ({paper['band']}), the mean of its {n} principal claim"
+        out.append(f"PAPER: {name} {paper['score']} ({paper['band']}), the mean of its {n} principal claim"
                    f"{'s' if n != 1 else ''}; the lowest is {paper['lowest']} at {paper['lowest_score']}.")
     elif paper:
-        out.append(f"PAPER: reliability {paper['score']} ({paper['band']}), the score of its lowest principal claim, "
+        out.append(f"PAPER: {name} {paper['score']} ({paper['band']}), the score of its lowest principal claim, "
                    f"{paper['lowest']}. Raising the lowest principal claim raises the paper.")
     else:
         out.append("PAPER: no score (no principal claim is scored).")
