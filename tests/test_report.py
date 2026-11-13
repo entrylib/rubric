@@ -57,6 +57,12 @@ class TestReport(unittest.TestCase):
         cid, pid, src = inherited[0]
         self.assertIn(f"{cid} (-{self.scores['claims'][cid]['costs'][pid]}, from {', '.join(src)})", self.text)
 
+    def test_a_site_names_the_score(self):
+        self.assertTrue(self.text.startswith("PAPER: reliability "))
+        named = rubric.report(self.scores, name="Support")
+        self.assertTrue(named.startswith("PAPER: Support "))
+        self.assertEqual(named.replace("PAPER: Support ", "PAPER: reliability ", 1), self.text)   # nothing else
+
     def test_novelty_in_question(self):
         scores = dict(self.scores, novelty={
             "C1": {"label": "extension", "check": "unacknowledged",

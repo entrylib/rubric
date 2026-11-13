@@ -140,7 +140,7 @@ The scores are also given as a plain-text report (`rubric.report`), for the auth
 - every problem that lowers a score, in the order of §5 (those of the principal claims first, most costly first), each with its check, its group, its cost, the claims it lowers and by how much (naming, for a claim that inherits it, the claim it arises in), the objects it concerns and what would remove it;
 - every claim's score, band and problems.
 
-The report says only what the scores say; it adds no cost of its own.
+The report says only what the scores say; it adds no cost of its own. It calls the score *reliability*, as this rubric does; a site that shows the score under another name (EntryLib calls it Support) passes that name (`rubric.report(scores, name="Support")`), and the report uses it in place of the word, nothing else changing.
 
 ## 5. Reliability of the paper
 
