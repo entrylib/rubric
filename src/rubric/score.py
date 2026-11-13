@@ -39,7 +39,9 @@ SUPPORT_WORDS = {"evidence": "evidence",
                  "evidence_unspecified": "evidence named without the observations the claim reports",
                  "argument_from_claims": "an argument from other claims",
                  "formal_checked": "a checked proof", "formal_unchecked": "an unchecked proof",
-                 "formal_disputed": "a disputed proof", "cited": "cited work only", "consensus": "consensus only",
+                 "formal_disputed": "a disputed proof", "cited": "cited work only",
+                 "cited_text": "cited work read in full, the passage given as text without a captured copy",
+                 "cited_full_text": "cited work read in full, without the passage it rests on", "consensus": "consensus only",
                  "argument": "argument only", "expert_judgement": "expert judgement only",
                  "unstated": "no stated support"}
 TERM = re.compile(r"\[\[[^\]:]+:([^\]]*)\]\]")
@@ -91,12 +93,39 @@ def _cites_observations(s, evidence):
     return bool(e) and not _list(e.get("results")) and not _list(e.get("tables"))
 
 
-def _support_cost(c, by_id, evidence):
+def _review(x):
+    """The `review` extension block of a claimset object, or {} (claimset extension `review`)."""
+    return _dict(_dict(_dict(x).get("ext")).get("review"))
+
+
+def _cited_key(c, s, doc):
+    """§3.1 (0.5): the cost key of a `cited` support entry, from how its work was read (the reference's
+    `ext.review.read`) and the passages the claim gives for it (`ext.review.extracts`)."""
+    rid = s.get("reference")
+    ref = next((r for r in _list(doc.get("references")) if isinstance(r, dict) and r.get("id") == rid), None)
+    if not isinstance(rid, str) or _review(ref).get("read") != "full_text":
+        return "cited"
+    arts = {a.get("id") for a in _list(doc.get("artefacts")) if isinstance(a, dict)}
+    extracts = [e for e in _list(_review(c).get("extracts")) if isinstance(e, dict) and e.get("reference") == rid]
+    if any(_text(e.get("exact")) and isinstance(e.get("artefact"), str) and e["artefact"] in arts for e in extracts):
+        return "cited_quoted"
+    if any(_text(e.get("text")) or _text(e.get("exact")) for e in extracts):
+        return "cited_text"
+    return "cited_full_text"
+
+
+def _text(x):
+    return isinstance(x, str) and bool(x.strip())
+
+
+def _support_cost(c, by_id, evidence, doc):
     costs = CHECKS["support_kind"]["costs"]
     best = None
     for s in _list(c.get("support")):
         kind = s.get("kind") if isinstance(s, dict) else None
-        if kind in OBSERVATION_KINDS:
+        if kind == "cited":
+            key = _cited_key(c, s, doc)
+        elif kind in OBSERVATION_KINDS:
             key = "evidence" if _cites_observations(s, evidence) else "evidence_unspecified"
         elif kind in EVIDENCE_KINDS:
             key = "evidence"
@@ -149,6 +178,27 @@ def _unplanned_cost(c, public_record):
     return 0
 
 
+def _review_search(doc, cid, public_record):
+    """§3.2 (0.5): a review's plan is its search: what its principal claims cost for the search the paper records."""
+    ch = CHECKS["review_search"]
+    paper = _review(doc.get("paper"))
+    if not _list(paper.get("searches")):
+        record = "with_public_record" if public_record else "without_public_record"
+        return [("review_search", cid, ch["costs"]["no_search"][record], [cid],
+                 {"what": "none is recorded; the claims were confirmed against works the authors knew"})]
+    parts, costs = [], []
+    if not _dict(paper.get("protocol")):
+        parts.append("the searches follow no recorded protocol")
+        costs.append(ch["costs"]["no_protocol"])
+    flags = [f for f in _list(paper.get("flags")) if isinstance(f, str)]
+    if flags:
+        parts.append("flagged " + ", ".join(f.replace("_", " ") for f in flags))
+        costs += [ch["cost_each_flag"]] * len(flags)
+    if not costs:
+        return []
+    return [("review_search", cid, sum(repeated(sorted(costs, reverse=True))), [cid], {"what": "; ".join(parts)})]
+
+
 def _capped(plan, limit):
     """A plan's problems cut so that together they cost at most `limit`, the costliest kept first (§3.2)."""
     out = []
@@ -167,7 +217,7 @@ def _instances(doc, c, by_id, public_record, evidence, warned):
     cid = c.get("id")
     formal = c.get("type") == "formal"
 
-    key = _support_cost(c, by_id, evidence)
+    key = _support_cost(c, by_id, evidence, doc)
     cost = CHECKS["support_kind"]["costs"].get(key, 0) if key else CHECKS["support_kind"]["costs"]["unstated"]
     if cost:
         out.append(("support_kind", cid, cost, [cid], {"what": SUPPORT_WORDS.get(key or "unstated")}))
@@ -180,6 +230,8 @@ def _instances(doc, c, by_id, public_record, evidence, warned):
         if t in INFERENTIAL:
             out.append(("exploratory_inference", cid, cost, [cid],
                         {"type": ("An " if t[0] in "aeiou" else "A ") + t, "record": record}))
+        elif cost and "review" in _dict(c.get("ext")):
+            out += _capped(_review_search(doc, cid, public_record), cost)
         elif cost:
             out.append(("exploratory_principal", cid, cost, [cid], {"type": t or "", "record": record}))
     plan = []
@@ -274,12 +326,18 @@ def _aggregate(instances):
     out = {}
     for check, key, cost, claims, args in instances:
         k = (check, None) if CHECKS[check]["count"] == "kind" else (check, key)
-        p = out.setdefault(k, {"check": check, "cost": 0, "claims": [], "args": args})
+        p = out.setdefault(k, {"check": check, "cost": 0, "claims": [], "args": args, "whats": {}})
         if cost > p["cost"]:
             p["cost"], p["args"] = cost, args
+        if check == "support_kind":                       # one problem over claims that rest on different support
+            p["whats"][args["what"]] = max(cost, p["whats"].get(args["what"], 0))
         for c in claims:
             if c not in p["claims"]:
                 p["claims"].append(c)
+    for p in out.values():
+        whats = p.pop("whats")
+        if len(whats) > 1:                                # named, the costliest first (§4.3)
+            p["args"] = dict(p["args"], what="; ".join(sorted(whats, key=lambda w: -whats[w])))
     for check in {k[0] for k in out if CHECKS[k[0]]["count"] == "each"}:
         items = sorted((p for k, p in out.items() if k[0] == check), key=lambda p: -p["cost"])
         for p, cost in zip(items, repeated([p["cost"] for p in items])):
