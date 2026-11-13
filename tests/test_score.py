@@ -311,6 +311,47 @@ class TestReview(unittest.TestCase):
         self.assertNotIn("review_search", found)
 
 
+class TestBackground(unittest.TestCase):
+    """§2 and §3.1 (0.5): stating the earlier work a finding rests on never costs more than leaving it out, beyond what
+    an unchecked assumption costs; a cited claim published on EntryLib costs by its score there."""
+
+    def premise(self, **extra):
+        return claim("C2", role="supporting", support=[{"kind": "cited", "reference": "B1"}], **extra)
+
+    def test_a_cited_premise_costs_a_claim_with_evidence_at_most_3(self):
+        alone = rubric.score(doc(claim()))["claims"]["C1"]["score"]
+        r = rubric.score(doc(claim(depends_on=["C2"]), self.premise()))
+        self.assertEqual(r["claims"]["C1"]["score"], alone - 3)
+        self.assertEqual(r["claims"]["C2"]["score"], 80)                      # the premise keeps its own score
+
+    def test_a_quoted_premise_costs_nothing(self):
+        d = doc(claim(depends_on=["C2"]), self.premise())
+        d["claims"][1]["ext"] = {"review": {"extracts": [{"reference": "B1", "exact": "w", "artefact": "A2"}]}}
+        d["references"] = [{"id": "B1", "target": "10.1/x", "id_type": "doi", "ext": {"review": {"read": "full_text"}}}]
+        d["artefacts"].append({"id": "A2", "kind": "data"})
+        self.assertEqual(rubric.score(d)["claims"]["C1"]["score"], 100)
+
+    def test_an_argument_from_cited_premises_pays_in_full(self):
+        rec = claim(depends_on=["C2"], support=[{"kind": "argument", "warrant": "W1"}])
+        self.assertEqual(problems(rubric.score(doc(rec, self.premise())))["support_kind"], 20)   # a review's recommendation
+
+    def test_other_premises_are_not_capped(self):
+        weak = claim("C2", role="supporting", support=[{"kind": "expert_judgement"}])
+        self.assertEqual(problems(rubric.score(doc(claim(depends_on=["C2"]), weak)))["support_kind"], 45)
+
+    def test_a_cited_claim_costs_by_its_score(self):
+        target = "entrylib:2026.000014@v2#C3"
+        c = claim(support=[{"kind": "cited", "target": target, "id_type": "claimset"}])
+        self.assertEqual(problems(rubric.score(doc(c), cited={target: 92}))["support_kind"], 8)
+        self.assertNotIn("support_kind", problems(rubric.score(doc(c), cited={target: 100})))
+        self.assertEqual(problems(rubric.score(doc(c), cited={target: 40}))["support_kind"], 20)   # never above citing
+        self.assertEqual(problems(rubric.score(doc(c)))["support_kind"], 20)                      # no score supplied
+        via_ref = doc(claim(support=[{"kind": "cited", "reference": "B1"}]))
+        via_ref["references"] = [{"id": "B1", "target": target, "id_type": "claimset"}]
+        self.assertEqual(problems(rubric.score(via_ref, cited={target: 85}))["support_kind"], 15)
+        self.assertEqual(problems(rubric.assess(doc(c), cited={target: 92}))["support_kind"], 8)
+
+
 class TestCounting(unittest.TestCase):
     def test_repeated_problems(self):
         from rubric.score import repeated

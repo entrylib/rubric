@@ -20,6 +20,7 @@
                 "formal_disputed": 45, "cited_quoted": 0, "cited_text": 5, "cited_full_text": 15, "cited": 20,
                 "consensus": 25, "argument_from_claims": 10, "argument": 30,
                 "expert_judgement": 45, "unstated": 70},
+      "background_max": 3,
       "text": "Rests on {what}",
       "fix": "Support the claim with evidence the claimset records, citing the result entries or table rows it reports, or have its proof checked; for cited work, read the work in full and quote the passage the claim rests on from a captured copy (claimset extension review)."
     },

@@ -41,7 +41,8 @@ SUPPORT_WORDS = {"evidence": "evidence",
                  "formal_checked": "a checked proof", "formal_unchecked": "an unchecked proof",
                  "formal_disputed": "a disputed proof", "cited": "cited work only",
                  "cited_text": "cited work read in full, the passage given as text without a captured copy",
-                 "cited_full_text": "cited work read in full, without the passage it rests on", "consensus": "consensus only",
+                 "cited_full_text": "cited work read in full, without the passage it rests on",
+                 "cited_claim": "a cited claim published on EntryLib, by its score there", "consensus": "consensus only",
                  "argument": "argument only", "expert_judgement": "expert judgement only",
                  "unstated": "no stated support"}
 TERM = re.compile(r"\[\[[^\]:]+:([^\]]*)\]\]")
@@ -98,6 +99,14 @@ def _review(x):
     return _dict(_dict(_dict(x).get("ext")).get("review"))
 
 
+def _cited_target(s, doc):
+    """The target and identifier type a `cited` support entry points to, directly or through its reference."""
+    ref = next((r for r in _list(doc.get("references")) if isinstance(r, dict) and r.get("id") == s.get("reference")),
+               None) if isinstance(s.get("reference"), str) else None
+    src = ref if ref is not None else s
+    return src.get("target"), src.get("id_type")
+
+
 def _cited_key(c, s, doc):
     """§3.1 (0.5): the cost key of a `cited` support entry, from how its work was read (the reference's
     `ext.review.read`) and the passages the claim gives for it (`ext.review.extracts`)."""
@@ -118,13 +127,21 @@ def _text(x):
     return isinstance(x, str) and bool(x.strip())
 
 
-def _support_cost(c, by_id, evidence, doc):
-    costs = CHECKS["support_kind"]["costs"]
+def _support_cost(c, by_id, evidence, doc, cited=None):
+    """The key and cost of the claim's strongest support (§3.1): (key, cost), or (None, None) when it has none.
+    `cited` maps the global IDs of claims published on EntryLib to their scores there, as the site supplies them."""
+    costs = dict(CHECKS["support_kind"]["costs"])
     best = None
     for s in _list(c.get("support")):
         kind = s.get("kind") if isinstance(s, dict) else None
         if kind == "cited":
             key = _cited_key(c, s, doc)
+            target, id_type = _cited_target(s, doc)
+            published = _dict(cited).get(target) if id_type == "claimset" and isinstance(target, str) else None
+            if isinstance(published, (int, float)) and not isinstance(published, bool):
+                by_score = max(0, min(costs["cited"], 100 - int(published)))
+                if by_score < costs[key]:
+                    key, costs["cited_claim"] = "cited_claim", min(by_score, costs.get("cited_claim", 100))
         elif kind in OBSERVATION_KINDS:
             key = "evidence" if _cites_observations(s, evidence) else "evidence_unspecified"
         elif kind in EVIDENCE_KINDS:
@@ -142,7 +159,7 @@ def _support_cost(c, by_id, evidence, doc):
             continue
         if best is None or costs[key] < costs[best]:
             best = key
-    return best
+    return best, (costs[best] if best else None)
 
 
 def _api_model_studied(c, doc, evidence):
@@ -210,17 +227,24 @@ def _capped(plan, limit):
     return out
 
 
-def _instances(doc, c, by_id, public_record, evidence, warned):
+#: Support keys of a claim that has support of its own, so that a cited premise is background to it (§2, 0.5).
+OWN_SUPPORT = {"evidence", "evidence_unspecified", "formal_checked", "formal_unchecked", "formal_disputed"}
+CITED_KEYS = {"cited", "cited_quoted", "cited_text", "cited_full_text", "cited_claim"}
+
+
+def _instances(doc, c, by_id, public_record, evidence, warned, cited=None):
     """The problems of one claim itself: [(check, key, cost, objects, args)]. `warned` is the set of (rule, where) of
     the validator's warnings, or None when they were not given."""
     out = []
     cid = c.get("id")
     formal = c.get("type") == "formal"
 
-    key = _support_cost(c, by_id, evidence, doc)
-    cost = CHECKS["support_kind"]["costs"].get(key, 0) if key else CHECKS["support_kind"]["costs"]["unstated"]
+    key, cost = _support_cost(c, by_id, evidence, doc, cited)
+    if key is None:
+        cost = CHECKS["support_kind"]["costs"]["unstated"]
     if cost:
-        out.append(("support_kind", cid, cost, [cid], {"what": SUPPORT_WORDS.get(key or "unstated")}))
+        out.append(("support_kind", cid, cost, [cid], {"what": SUPPORT_WORDS.get(key or "unstated"),
+                                                        "cited": key in CITED_KEYS}))
 
     planning = c.get("planning")
     record = "; the lab record shows every run" if public_record else ""
@@ -358,15 +382,19 @@ def _result(agg):
     return value, {g: _dot(v) for g, v in lost.items()}
 
 
-def score(doc, warnings=None):
+def score(doc, warnings=None, cited=None):
     """The reliability scores of a published claimset (RUBRIC.md §2–5), given the validator's warnings for it when
-    they are available (its validation report)."""
+    they are available (its validation report), and `cited`, the scores on EntryLib of the published claims the file
+    cites ({global claim ID as the file writes it: score}), when the site supplies them (§3.1)."""
     claims = [c for c in _list(doc.get("claims")) if isinstance(c, dict) and isinstance(c.get("id"), str)]
     by_id = {c["id"]: c for c in claims}
     evidence = {e.get("id"): e for e in _list(doc.get("evidence")) if isinstance(e, dict)}
     warned = None if warnings is None else {(_dict(w).get("rule"), _dict(w).get("where")) for w in _list(warnings)}
     public_record = _public_record(doc)
-    own = {c["id"]: _instances(doc, c, by_id, public_record, evidence, warned) for c in claims if not is_assumption(c)}
+    own = {c["id"]: _instances(doc, c, by_id, public_record, evidence, warned, cited)
+           for c in claims if not is_assumption(c)}
+    background = {c["id"] for c in claims if _support_cost(c, by_id, evidence, doc, cited)[0] in OWN_SUPPORT}
+    cap = CHECKS["support_kind"]["background_max"]
     limited = {cid for lim in _list(doc.get("limitations")) if isinstance(lim, dict) and not _restated(lim, warned)
                for cid in _list(lim.get("affects")) if isinstance(cid, str)}
     for c in claims:                                            # no_limitation (§3.5): nothing it rests on declares one
@@ -375,7 +403,16 @@ def score(doc, warnings=None):
             own[c["id"]].append(("no_limitation", c["id"], CHECKS["no_limitation"]["costs"]["missing"], [c["id"]], {}))
 
     def gathered(ids):
-        return [i for x in ids for cid in _closure(x, by_id) for i in own.get(cid, [])]
+        """The problems of these claims and of what they rest on. A claim with support of its own pays for a cited
+        premise, background to it, at most what an unchecked assumption costs (§2, 0.5)."""
+        out = []
+        for x in ids:
+            for cid in _closure(x, by_id):
+                for i in own.get(cid, []):
+                    if cid != x and x in background and i[0] == "support_kind" and i[4].get("cited"):
+                        i = (i[0], i[1], min(i[2], cap), i[3], i[4])
+                    out.append(i)
+        return out
 
     principal = [c["id"] for c in claims if c.get("role") == "principal" and c["id"] in own]
     paper_agg = _aggregate(gathered(principal)) if principal else {}

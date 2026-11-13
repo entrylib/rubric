@@ -11,11 +11,13 @@ Two things, kept apart:
 
 A claim's reliability and its novelty do not affect each other. A careful replication can be highly reliable and not new.
 
-In this version every score is computed by rules from the published claimset file and, where given, the warnings of the claimset validator published with it (its validation report): warning 17 (§3.4) and warning 46 (§3.5). The rules check the record, not the science: whether a claim follows from its evidence, whether its scope is narrower than the data, and what the authors did not declare are left to a reviewer (planned: issue #1). The page says so, and scores may change as the rubric and reviews develop.
+In this version every score is computed by rules from the published claimset file and, where given, the warnings of the claimset validator published with it (its validation report): warning 17 (§3.4) and warning 46 (§3.5); and, from 0.5, the scores on EntryLib of the published claims the file cites, which the site supplies (§3.1). The rules check the record, not the science: whether a claim follows from its evidence, whether its scope is narrower than the data, and what the authors did not declare are left to a reviewer (planned: issue #1). The page says so, and scores may change as the rubric and reviews develop.
 
 ## 2. Reliability of a claim
 
 A claim starts at 100. Each **problem** found by the checks below costs points. The claim's score is 100 minus the costs of its problems and of the problems of every claim it rests on, `depends_on` and `assumptions`, followed to the end, with each problem counted once. It is never below 0. A problem a claim has from what it rests on is **inherited**: it lowers the claim like its own, and is reported with the claim it arises in (§4.3).
+
+**Background** (from 0.5). A claim with support of its own (evidence or a proof, §3.1) often rests on earlier work too: an ARIMA study on the conditions under which ARIMA forecasts are optimal, a measurement on its instrument's calibration. Stating such a premise, as a claim with `cited` support that the claim's `depends_on` names, tells a reader what the finding needs; leaving it out hides it. So a claim with support of its own pays for the `cited` support of what it rests on at most what an unchecked assumption costs (3, `unchecked_assumption`), and nothing when the premise quotes its passage from a work read in full or cites a published claim that scores 97 or more (§3.1). The premise keeps its own score. A claim whose own support is an argument from such premises, as a review's recommendation is, pays for them in full: they are what it rests on, not its background.
 
 Assumption claims (whose only support kind is `assumption`, claimset §3.8) are not scored. They are taken as given; an unchecked assumption costs the claims that rest on it (check `unchecked_assumption`).
 
@@ -49,6 +51,7 @@ Each check belongs to one of five **groups**. A claim shows one dot per group (�
 | `cited`, the work read in full and the passage the claim rests on quoted from a captured copy (`review` extension, below) | 0 |
 | `cited`, the work read in full and the passage given as text, without a captured copy | 5 |
 | `cited`, the work read in full, no passage given | 15 |
+| `cited`, a claim published on EntryLib (below) | 100 minus its score there, at most 20 |
 | `cited` | 20 |
 | `consensus` | 25 |
 | `argument` from claims the file scores (the claim's `depends_on` names a claim that is not an assumption) | 10 |
@@ -64,6 +67,8 @@ An `empirical_quant`, `empirical_obs` or `simulation` support entry **cites the 
 - 5 when the work was read in full and the extract gives the passage as `text` only: a reader finds it in the work, not in the file.
 - 15 when the work was read in full and no extract is given: the authors' account that they read it, without the passage.
 - 20 otherwise: a work read in its abstract (`abstract`) or through others' accounts (`secondary`), or one whose reading is not said. Saying how a work was read never costs more than not saying it.
+
+**A cited claim published on EntryLib** (from 0.5). Where the cited work has a claimset, a `cited` support entry may name the claim itself by its global ID (`id_type: claimset`, `entrylib:2026.000014@v2#C3`), directly or through its reference. The site supplies that claim's score on EntryLib (as published, under the current rubric), and the entry costs 100 minus it, never more than citing the work alone (20), and never more than the other rows give it: citing the exact claim a finding rests on never costs more than citing its paper. A claim not found on EntryLib, or scored without the site (`claimset score` without `--cited`), costs as any `cited` entry.
 
 An argument from claims the file scores costs less than an argument alone: the premises' problems reach the claim anyway (§2), so it is not charged twice for them.
 
@@ -186,7 +191,7 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
-- **0.5** (2026-11): reviews. A `cited` support entry costs by how its work was read and whether the passage the claim rests on is given (§3.1: 0, 5, 15 or 20); a review's principal claims pay `review_search` for their search instead of `exploratory_principal` (§3.2). Both read the claimset extension `review`; a claimset without it scores as under 0.4. A `support_kind` problem over claims with different support names each kind (§4.3). The rubric reads each claim's record, not a declared kind of work (§2).
+- **0.5** (2026-11): background and reviews. A claim with support of its own pays for a cited premise at most what an unchecked assumption costs (§2), so stating the earlier work a finding rests on never costs more than leaving it out, by more than 3. A cited claim published on EntryLib costs 100 minus its score there, at most 20 (§3.1), from scores the site supplies. Reviews: A `cited` support entry costs by how its work was read and whether the passage the claim rests on is given (§3.1: 0, 5, 15 or 20); a review's principal claims pay `review_search` for their search instead of `exploratory_principal` (§3.2). Both read the claimset extension `review`; a claimset without it scores as under 0.4. A `support_kind` problem over claims with different support names each kind (§4.3). The rubric reads each claim's record, not a declared kind of work (§2).
 - **0.4** (2026-11): planned estimates (claimset v0.42) are planned claims (§3.2): no cost for being exploratory, `plan_anchor` as for a confirmatory claim, and the flags of `estimate.flags` (among them `diagnostic_missing`) cost as a test's do.
 - **0.3** (2026-11): from a study with claimset-lab whose scores rewarded leaving things out.
   - A plan never costs more than no plan (§3.2): exploratory principal claims of any type cost 3 or 5 (`exploratory_principal`); a plan anchored by a push costs 2; a plan's problems together cost at most what the claim would cost unplanned.

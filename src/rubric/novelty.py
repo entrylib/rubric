@@ -77,13 +77,14 @@ def novelty(claim, matches, concept=None):
     return {"label": label if label != "not_applicable" else None, "check": check, "matches": close}
 
 
-def assess(doc, find=None, warnings=None):
+def assess(doc, find=None, warnings=None, cited=None):
     """score(doc) with `novelty`: {claim id: novelty() + `checked`} for every scored claim that has a novelty label.
     Each principal claim is compared with the published claims that find(statement) returns ([{"claim", "statement"}],
     supplied by the caller: the portal's search, or EntryLib's public search); `checked` says whether it was. Without
-    `find` nothing is compared and every `checked` is false. `warnings` are the claimset validator's, as for score()."""
+    `find` nothing is compared and every `checked` is false. `warnings` are the claimset validator's, and `cited` the
+    scores of the published claims the file cites, as for score()."""
     from .score import score
-    result = score(doc, warnings)
+    result = score(doc, warnings, cited)
     concept = (doc.get("paper") or {}).get("id") if isinstance(doc.get("paper"), dict) else None
     novelty_of = {}
     for c in doc.get("claims") or []:
