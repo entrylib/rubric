@@ -1,4 +1,4 @@
-# EntryLib scoring rubric, v0.5
+# EntryLib scoring rubric, v0.6
 
 How EntryLib scores the claimsets it publishes. This document is normative: the scorer (`src/rubric/`) implements it, and the costs in `src/rubric/rubric.json` are the ones stated here. Every score records the rubric version it was computed under.
 
@@ -96,7 +96,7 @@ A claim is **planned** when its `planning` is `confirmatory`, `confirmatory_with
 ### 3.4 Context
 
 - `no_scope`: a claim with no `scope`, or an empty one, costs 10. Formal claims are exempt.
-- `no_prior_work`: a principal claim with no relation to work outside the paper (a relation whose `id_type` is not `local`, or `cited` support), unless its novelty is `not_applicable`, costs 5.
+- `no_prior_work`: a principal claim with no relation to work outside the paper (a relation whose `id_type` is not `local`, or `cited` support), unless its novelty is `not_applicable` or `synthesis`, costs 5. A synthesis (claimset v0.43) rests on cited work by definition, its own `cited` support or that of the claims it depends on (claimset rule 98), so it is never unrelated to earlier work (from 0.6).
 - `numbers_without_results`: a claim whose statement gives numbers that no recorded result holds costs 5: the validator's warning 17 on the claim's statement (claimset §10), which compares each number with the results and tables of the evidence the claim cites. Names with digits (`M4`, `GPT-4o`) are not numbers. Without the validator's warnings, the rule falls back to the claim's support listing no `results` while its statement gives numbers outside its mathematics, term labels and names. Formal claims are exempt.
 
 ### 3.5 Open problems
@@ -175,12 +175,12 @@ The explanation of the paper's score names its principal claims' mean and the lo
 
 ## 6. Novelty
 
-Novelty is shown as the claim's label (claimset §3.7: `no_prior_found`, `extension`, `replication`, `refutation`; `not_applicable` shows nothing), as the authors' account, with the result of the **close-match check**:
+Novelty is shown as the claim's label (claimset §3.7: `no_prior_found`, `extension`, `replication`, `refutation`, and from claimset v0.43 `synthesis`; `not_applicable` shows nothing), as the authors' account, with the result of the **close-match check**:
 
 - Every principal claim is compared with the claims of every claimset published on EntryLib before it, including the same guarantor's.
 - A claimset not yet submitted (scored with `claimset score --novelty`) is compared with the claims published on EntryLib at the time. A check that was not run is reported as not run, never as no close match.
 - Two statements match closely when their **similarity** (below) is at least 0.6.
-- A close match is **acknowledged** when the claim has a relation (any type) to the matching claim or to its claimset; otherwise it is **unacknowledged**.
+- A close match is **acknowledged** when the claim has a relation (any type) to the matching claim or to its claimset, or, from 0.6, cites it (`cited` support naming it, directly or through a reference): a synthesis that states a published claim and cites it acknowledges it. Otherwise it is **unacknowledged**.
 - The result is one of: no close match on EntryLib; close matches, all acknowledged; or unacknowledged close matches, listed. An unacknowledged close match puts the label in question.
 
 **Similarity** of two statements: replace each term reference `[[ID:text]]` by its text and each mathematical expression `$…$` by nothing; lower-case; split into words (letters and digits); drop the stop words of `src/rubric/novelty.py`; reduce each word to its stem by removing one of the endings listed there; the similarity is the number of stems the two statements share divided by the number in the shorter one (overlap coefficient).
@@ -191,6 +191,7 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
+- **0.6** (2026-11): the novelty label `synthesis` of claimset v0.43, for claims that state what the works they cite establish. A synthesis costs nothing under `no_prior_work` (§3.4), since it rests on cited work, and citing a published claim acknowledges a close match with it (§6).
 - **0.5** (2026-11): background and reviews. A claim with support of its own pays for a cited premise at most what an unchecked assumption costs (§2), so stating the earlier work a finding rests on never costs more than leaving it out, by more than 3. A cited claim published on EntryLib costs 100 minus its score there, at most 20 (§3.1), from scores the site supplies. Reviews: A `cited` support entry costs by how its work was read and whether the passage the claim rests on is given (§3.1: 0, 5, 15 or 20); a review's principal claims pay `review_search` for their search instead of `exploratory_principal` (§3.2). Both read the claimset extension `review`; a claimset without it scores as under 0.4. A `support_kind` problem over claims with different support names each kind (§4.3). The rubric reads each claim's record, not a declared kind of work (§2).
 - **0.4** (2026-11): planned estimates (claimset v0.42) are planned claims (§3.2): no cost for being exploratory, `plan_anchor` as for a confirmatory claim, and the flags of `estimate.flags` (among them `diagnostic_missing`) cost as a test's do.
 - **0.3** (2026-11): from a study with claimset-lab whose scores rewarded leaving things out.

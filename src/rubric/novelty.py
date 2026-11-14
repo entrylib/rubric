@@ -54,13 +54,17 @@ def _concept(global_id):
     return re.split(r"[@#]", global_id, maxsplit=1)[0] if isinstance(global_id, str) else ""
 
 
-def novelty(claim, matches, concept=None):
+def novelty(claim, matches, concept=None, references=None):
     """The claim's novelty label and the close-match check: check is "none" (no close match on EntryLib),
-    "acknowledged" (close matches, all related to by the claim) or "unacknowledged"; matches lists the close ones,
-    each with its similarity and whether it is acknowledged. Matches from the claim's own claimset (`concept`) are
-    ignored."""
+    "acknowledged" (close matches, all related to or cited by the claim) or "unacknowledged"; matches lists the close
+    ones, each with its similarity and whether it is acknowledged. Matches from the claim's own claimset (`concept`) are
+    ignored. `references` are the file's, for cited support that names a reference (from 0.6)."""
     label = claim.get("novelty")
     targets = {r.get("target") for r in claim.get("relations") or [] if isinstance(r, dict)}
+    refs = {r.get("id"): r.get("target") for r in references or [] if isinstance(r, dict)}
+    targets |= {s.get("target") if s.get("target") else refs.get(s.get("reference"))
+                for s in claim.get("support") or [] if isinstance(s, dict) and s.get("kind") == "cited"}
+    targets.discard(None)
     targets |= {_concept(t) for t in targets}
     close = []
     for m in matches or []:
@@ -91,7 +95,7 @@ def assess(doc, find=None, warnings=None, cited=None):
         if not isinstance(c, dict) or c.get("id") not in result["claims"] or not c.get("novelty"):
             continue
         compared = find is not None and c.get("role") == "principal"
-        n = novelty(c, find(c.get("statement")) if compared else [], concept)
+        n = novelty(c, find(c.get("statement")) if compared else [], concept, doc.get("references"))
         n["checked"] = compared
         novelty_of[c["id"]] = n
     result["novelty"] = novelty_of
