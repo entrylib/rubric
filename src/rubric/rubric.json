@@ -1,5 +1,5 @@
 {
-  "version": "0.5",
+  "version": "0.6",
   "bands": [
     {"name": "high", "label": "High", "min": 80},
     {"name": "medium", "label": "Medium", "min": 60},

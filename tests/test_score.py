@@ -140,6 +140,7 @@ class TestChecks(unittest.TestCase):
         self.assertEqual(problems(rubric.score(doc(claim(relations=[]))))["no_prior_work"], 5)
         self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], novelty="not_applicable")))))
         self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], role="secondary")))))
+        self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], novelty="synthesis")))))  # 0.6
         numbers = claim(statement="Coverage is 0.81 on [[D6:M4 sample]].", support=[{"kind": "simulation"}])
         self.assertEqual(problems(rubric.score(doc(numbers)))["numbers_without_results"], 5)
         words = claim(statement="Coverage falls on the [[D6:M4 sample]] in $T_1$ (see E1.T1.r2).",
@@ -454,6 +455,22 @@ class TestNovelty(unittest.TestCase):
                            "entrylib:2026.000020")
         self.assertEqual((r["check"], r["matches"]), ("none", []))
         self.assertIsNone(rubric.novelty(claim(novelty="not_applicable"), [])["label"])
+
+    def test_a_synthesis_acknowledges_what_it_cites(self):
+        """§6 (0.6): a claim citing a published claim acknowledges a close match with it."""
+        same = "AutoMSARIMA coverage falls with the level ratio on M4."
+        c = claim(statement="The coverage of AutoMSARIMA falls with the level ratio on the M4 sample.",
+                  novelty="synthesis", relations=[], support=[{"kind": "cited", "reference": "B1"}])
+        refs = [{"id": "B1", "target": "entrylib:2026.000014@v1#C3", "id_type": "claimset"}]
+        match = [{"claim": "entrylib:2026.000014#C3", "statement": same}]
+        r = rubric.novelty(c, match, "entrylib:2026.000020", refs)
+        self.assertEqual((r["label"], r["check"]), ("synthesis", "acknowledged"))
+        self.assertEqual(rubric.novelty(c, match, "entrylib:2026.000020")["check"], "unacknowledged")   # no refs
+        c["support"] = [{"kind": "cited", "target": "entrylib:2026.000014@v1#C3", "id_type": "claimset"}]
+        self.assertEqual(rubric.novelty(c, match, "entrylib:2026.000020")["check"], "acknowledged")
+        d = doc(c)
+        d["references"] = refs
+        self.assertEqual(rubric.assess(d, lambda s: match)["novelty"]["C1"]["check"], "acknowledged")
 
 
 if __name__ == "__main__":
