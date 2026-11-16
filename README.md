@@ -12,7 +12,7 @@ and what would raise it.
 
 ## What it scores
 
-- **Reliability**, from 0 to 100, for every claim and for the paper: how far the claimset's own record supports each
+- **Support**, from 0 to 100, for every claim and for the paper: how far the claimset's own record supports each
   claim. A claim starts at 100 and loses points for each problem the checks find in it and in the claims it rests on:
   support that cannot be checked, a test not planned before it ran, a missing scope, limitations still open, and so
   on. Each claim has a band (high 80 and over, medium 60 to 79, low under 60) and five dots, one per group of checks
@@ -41,7 +41,7 @@ Before submitting a claimset, score it as it would be scored once published, wit
 [claimset](https://pypi.org/project/claimset/) command-line tool:
 
 ```bash
-claimset score paper.claimset.json              # reliability, and every issue with what would fix it
+claimset score paper.claimset.json              # Support, and every issue with what would fix it
 claimset score paper.claimset.json --novelty    # with the close-match check against EntryLib
 ```
 
@@ -61,7 +61,7 @@ print(rubric.report(scores))                         # every problem, what it co
 - `rubric.score(doc, warnings=None, cited=None)`: the scores. `warnings` are the claimset validator's for the file
   (`claimset.validate.validate(doc, published=True).warnings`); two checks use them. `cited` maps the global IDs of
   claims published on EntryLib that the file cites, as it writes them, to their scores there; the site supplies them.
-- `rubric.report(scores, biggest_n=0, name="reliability")`: the scores as plain text, for authors and their agents.
+- `rubric.report(scores, biggest_n=0, name="Support")`: the scores as plain text, for authors and their agents.
 - `rubric.assess(doc, find=None, warnings=None, cited=None)`: the scores with novelty; `find(statement)` returns the published
   claims to compare with.
 - `rubric.VERSION`: the rubric version every score records.

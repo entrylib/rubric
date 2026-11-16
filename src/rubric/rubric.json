@@ -6,7 +6,7 @@
     {"name": "low", "label": "Low", "min": 0}
   ],
   "groups": [
-    {"name": "support", "label": "Support", "about": "what the claim rests on: evidence, proof, citation, argument or judgement"},
+    {"name": "support", "label": "Evidence", "about": "what the claim rests on: evidence, proof, citation, argument or judgement"},
     {"name": "plan", "label": "Plan", "about": "whether the test was planned before it was run, and how the plan was anchored"},
     {"name": "checkable", "label": "Checkable", "about": "whether a reader can obtain what is needed to check the claim"},
     {"name": "context", "label": "Context", "about": "where the claim holds, what earlier work it relates to, and which recorded results its numbers come from"},

@@ -1,4 +1,4 @@
-"""Reliability scores (RUBRIC.md §2–5).
+"""Support scores (RUBRIC.md §2–5).
 
 score(doc, warnings=None) -> {
     "rubric": "0.4",
@@ -383,7 +383,7 @@ def _result(agg):
 
 
 def score(doc, warnings=None, cited=None):
-    """The reliability scores of a published claimset (RUBRIC.md §2–5), given the validator's warnings for it when
+    """The Support scores of a published claimset (RUBRIC.md §2–5), given the validator's warnings for it when
     they are available (its validation report), and `cited`, the scores on EntryLib of the published claims the file
     cites ({global claim ID as the file writes it: score}), when the site supplies them (§3.1)."""
     claims = [c for c in _list(doc.get("claims")) if isinstance(c, dict) and isinstance(c.get("id"), str)]
