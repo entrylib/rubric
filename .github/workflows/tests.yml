@@ -1,9 +1,13 @@
 name: tests
 
+# Python checks run only when the Python code changes, or the rubric file the scorer reads (src/rubric/rubric.json).
+# A change to text alone (RUBRIC.md, README) runs none here; build.yml still runs every check before a release.
 on:
   push:
     branches: [main]
+    paths: ["**.py", "pyproject.toml", "src/rubric/rubric.json", ".github/workflows/tests.yml"]
   pull_request:
+    paths: ["**.py", "pyproject.toml", "src/rubric/rubric.json", ".github/workflows/tests.yml"]
   workflow_call:          # run by build.yml before a release is drafted
 
 jobs:

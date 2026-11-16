@@ -5,7 +5,7 @@
 - Every check needs a test: a case that triggers it with its cost, and one that does not.
 - Scores rest only on the published claimset file and what the site supplies to the scorer: for novelty, the claims it finds; for cited claims published on EntryLib, their scores (from 0.5). Nothing in the rubric reads the network or the portal's database.
 - The claimset format belongs to the `claimset` package; this repository reads published files and never reimplements their validation.
-- Standard library only; Python 3.10+. Run `python3 -m unittest discover -s tests` before committing.
+- Standard library only; Python 3.10+. Before committing a change to Python code or to `src/rubric/rubric.json`, run `python3 -m unittest discover -s tests`; a change to text alone needs no test run.
 - Text is written for LLM readers as much as for people: plain, explicit, one meaning per term.
 
 ## Pull requests
