@@ -1,4 +1,4 @@
-"""EntryLib's scoring rubric (RUBRIC.md): reliability scores of a claimset's claims and of the paper, computed by rules
+"""EntryLib's scoring rubric (RUBRIC.md): Support scores of a claimset's claims and of the paper, computed by rules
 from the published claimset file, and the novelty close-match check.
 
     score(doc, warnings=None, cited=None)

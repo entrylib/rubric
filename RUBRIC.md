@@ -6,14 +6,16 @@ How EntryLib scores the claimsets it publishes. This document is normative: the 
 
 Two things, kept apart:
 
-- **Reliability**, the main score: how far the claimset's own record supports each claim. A number from 0 to 100 for every claim that is not an assumption, and one for the paper.
+- **Support**, the main score: how far the claimset's own record supports each claim. A number from 0 to 100 for every claim that is not an assumption, and one for the paper.
 - **Novelty**, secondary: what a claim adds to earlier work. In this version a label, not a number (§6).
 
-A claim's reliability and its novelty do not affect each other. A careful replication can be highly reliable and not new.
+A claim's Support and its novelty do not affect each other. A careful replication can be well supported and not new.
+
+The score is written **Support**, with a capital. In code type, `support` is the claimset's own field for what a claim rests on (claimset §3.3), which the checks read. Until 0.6.1 this document called the score *reliability*; the scores and their rules are the same.
 
 In this version every score is computed by rules from the published claimset file and, where given, the warnings of the claimset validator published with it (its validation report): warning 17 (§3.4) and warning 46 (§3.5); and, from 0.5, the scores on EntryLib of the published claims the file cites, which the site supplies (§3.1). The rules check the record, not the science: whether a claim follows from its evidence, whether its scope is narrower than the data, and what the authors did not declare are left to a reviewer (planned: issue #1). The page says so, and scores may change as the rubric and reviews develop.
 
-## 2. Reliability of a claim
+## 2. Support of a claim
 
 A claim starts at 100. Each **problem** found by the checks below costs points. The claim's score is 100 minus the costs of its problems and of the problems of every claim it rests on, `depends_on` and `assumptions`, followed to the end, with each problem counted once. It is never below 0. A problem a claim has from what it rests on is **inherited**: it lowers the claim like its own, and is reported with the claim it arises in (§4.3).
 
@@ -31,13 +33,15 @@ Each check belongs to one of five **groups**. A claim shows one dot per group (�
 
 | Group | What it covers |
 |---|---|
-| Support | what the claim rests on |
+| Evidence | what the claim rests on |
 | Plan | whether the test was planned before it was run, and how the plan was anchored |
 | Checkable | whether a reader can obtain what is needed to check the claim |
 | Context | where the claim holds, what earlier work it relates to, and which recorded results its numbers come from |
 | Open problems | limitations and assumptions that are still open |
 
-### 3.1 Support
+### 3.1 Evidence
+
+The group is named `support` in `rubric.json` and in the scores, after the claimset field it reads; it is shown as **Evidence**, because Support is the score's own name.
 
 `support_kind`: the cost of the claim's strongest support (the cheapest of its support entries):
 
@@ -74,9 +78,9 @@ An argument from claims the file scores costs less than an argument alone: the p
 
 ### 3.2 Plan
 
-A claim is **planned** when its `planning` is `confirmatory`, `confirmatory_with_deviations` or `planned_estimate` (a value whose estimation a plan fixed in advance, claimset v0.42 §3.3.3); it then costs nothing for being exploratory. A plan never costs more than no plan. Every planned test or estimate is at least as reliable as the same claim unplanned, so the problems of a claim's plan together (`plan_anchor`, `plan_deviations`, `plan_flags`) cost at most what the same claim would cost unplanned; beyond that they are cut, the costliest kept first.
+A claim is **planned** when its `planning` is `confirmatory`, `confirmatory_with_deviations` or `planned_estimate` (a value whose estimation a plan fixed in advance, claimset v0.42 §3.3.3); it then costs nothing for being exploratory. A plan never costs more than no plan. Every planned test or estimate scores at least as high as the same claim unplanned, so the problems of a claim's plan together (`plan_anchor`, `plan_deviations`, `plan_flags`) cost at most what the same claim would cost unplanned; beyond that they are cut, the costliest kept first.
 
-- `exploratory_inference`: a claim of type `associational`, `causal`, `mechanistic` or `predictive` whose `planning` is `exploratory` (or absent). What lowers its reliability is selection a reader cannot see: a result picked from many tries. Cost 5 when the paper's lab record (`paper.exploration.lab_record`) is public, so every run can be seen; 15 otherwise.
+- `exploratory_inference`: a claim of type `associational`, `causal`, `mechanistic` or `predictive` whose `planning` is `exploratory` (or absent). What lowers its Support is selection a reader cannot see: a result picked from many tries. Cost 5 when the paper's lab record (`paper.exploration.lab_record`) is public, so every run can be seen; 15 otherwise.
 - `exploratory_principal`: a principal claim of any other type except `formal` whose `planning` is `exploratory` (or absent). Which measurements a paper reports first is a selection too, smaller than an inference's. Cost 3 when the lab record is public; 5 otherwise. Claims that are not principal cost nothing for being exploratory: a measurement that supports another claim is not a finding of its own.
 - `review_search` (from 0.5): a review's plan is its search. A principal claim with a `review` block (claimset extension `review`, §1.2) and no plan pays this check instead of `exploratory_principal`, never more:
   - the paper records no search (`paper.ext.review.searches`): the claims were confirmed against works the authors knew, a selection a reader cannot see. Cost 3 when the lab record is public, 5 otherwise, as `exploratory_principal`.
@@ -163,9 +167,9 @@ The scores are also given as a plain-text report (`rubric.report`), for the auth
 - every problem that lowers a score, in the order of §5 (those of the principal claims first, most costly first), each with its check, its group, its cost, the claims it lowers and by how much (naming, for a claim that inherits it, the claim it arises in), the objects it concerns and what would remove it. A `support_kind` problem over claims that rest on different kinds of support names each kind, the costliest first (from 0.5);
 - every claim's score, band and problems.
 
-The report says only what the scores say; it adds no cost of its own. It calls the score *reliability*, as this rubric does; a site that shows the score under another name (EntryLib calls it Support) passes that name (`rubric.report(scores, name="Support")`), and the report uses it in place of the word, nothing else changing.
+The report says only what the scores say; it adds no cost of its own. It calls the score *Support*, as this rubric does; a site that shows the score under another name passes that name (`rubric.report(scores, name="…")`), and the report uses it in place of the word, nothing else changing.
 
-## 5. Reliability of the paper
+## 5. Support of the paper
 
 The paper's score is the mean of the scores of its principal claims, rounded to the nearest whole number; its lowest principal claim and that claim's score are always shown with it. A paper with no principal claim that is scored has no score.
 
@@ -191,6 +195,7 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
+- **0.6**, names only (package 0.6.1, 2026-11-16): the score is called **Support**, where it was called reliability, and the group of checks of §3.1 is shown as Evidence. No cost, band, check or rule changed, so the rubric version stays 0.6 and no score moves.
 - **0.6** (2026-11): the novelty label `synthesis` of claimset v0.43, for claims that state what the works they cite establish. A synthesis costs nothing under `no_prior_work` (§3.4), since it rests on cited work, and citing a published claim acknowledges a close match with it (§6).
 - **0.5** (2026-11): background and reviews. A claim with support of its own pays for a cited premise at most what an unchecked assumption costs (§2), so stating the earlier work a finding rests on never costs more than leaving it out, by more than 3. A cited claim published on EntryLib costs 100 minus its score there, at most 20 (§3.1), from scores the site supplies. Reviews: A `cited` support entry costs by how its work was read and whether the passage the claim rests on is given (§3.1: 0, 5, 15 or 20); a review's principal claims pay `review_search` for their search instead of `exploratory_principal` (§3.2). Both read the claimset extension `review`; a claimset without it scores as under 0.4. A `support_kind` problem over claims with different support names each kind (§4.3). The rubric reads each claim's record, not a declared kind of work (§2).
 - **0.4** (2026-11): planned estimates (claimset v0.42) are planned claims (§3.2): no cost for being exploratory, `plan_anchor` as for a confirmatory claim, and the flags of `estimate.flags` (among them `diagnostic_missing`) cost as a test's do.

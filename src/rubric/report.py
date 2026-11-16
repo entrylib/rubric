@@ -37,7 +37,7 @@ def biggest(scores, n=3):
     return sorted(open_problems(scores), key=lambda x: -max(x[2].values()))[:n]
 
 
-def report(scores, biggest_n=0, name="reliability"):
+def report(scores, biggest_n=0, name="Support"):
     """The report of RUBRIC.md §4.3, as text ending in a newline. `name`: what the score is called, for a site that
     shows it under another name (§4.3)."""
     out = []

@@ -32,7 +32,7 @@ class TestReport(unittest.TestCase):
         for cid, c in self.scores["claims"].items():
             self.assertIn(f"\n{cid}: {c['score']} ({c['band']}): ", self.text)
         paper = self.scores["paper"]
-        self.assertTrue(self.text.startswith(f"PAPER: reliability {paper['score']} ({paper['band']})"))
+        self.assertTrue(self.text.startswith(f"PAPER: Support {paper['score']} ({paper['band']})"))
 
     def test_the_biggest_issues_are_the_costliest_for_one_claim(self):
         top = biggest(self.scores, 3)
@@ -58,10 +58,10 @@ class TestReport(unittest.TestCase):
         self.assertIn(f"{cid} (-{self.scores['claims'][cid]['costs'][pid]}, from {', '.join(src)})", self.text)
 
     def test_a_site_names_the_score(self):
-        self.assertTrue(self.text.startswith("PAPER: reliability "))
-        named = rubric.report(self.scores, name="Support")
-        self.assertTrue(named.startswith("PAPER: Support "))
-        self.assertEqual(named.replace("PAPER: Support ", "PAPER: reliability ", 1), self.text)   # nothing else
+        self.assertTrue(self.text.startswith("PAPER: Support "))
+        named = rubric.report(self.scores, name="Backing")
+        self.assertTrue(named.startswith("PAPER: Backing "))
+        self.assertEqual(named.replace("PAPER: Backing ", "PAPER: Support ", 1), self.text)       # nothing else
 
     def test_novelty_in_question(self):
         scores = dict(self.scores, novelty={
