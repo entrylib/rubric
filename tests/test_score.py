@@ -34,6 +34,7 @@ def doc(*claims, limitations=None, public_record=False):
         limitations = [{"id": "L0", "impact": "could_reverse", "mitigation": "addressed",
                         "affects": [c["id"] for c in claims]}]
     d = {"paper": {"exploration": {"lab_record": "A1"}}, "claims": list(claims), "limitations": list(limitations),
+         "references": [{"id": "B1", "target": "10.1000/x", "id_type": "doi"}],
          "artefacts": [{"id": "A1", "kind": "lab_record",
                         "availability": {"level": "public" if public_record else "author_only"}}]}
     return d
@@ -141,6 +142,22 @@ class TestChecks(unittest.TestCase):
         self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], novelty="not_applicable")))))
         self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], role="secondary")))))
         self.assertNotIn("no_prior_work", problems(rubric.score(doc(claim(relations=[], novelty="synthesis")))))  # 0.6
+
+    def test_no_references(self):                                                                   # 0.7
+        bare = doc(claim(relations=[{"type": "supports", "target": "entrylib:2026.000008@v2#C2",
+                                     "id_type": "claimset"}]))
+        bare.pop("references")
+        self.assertEqual(problems(rubric.score(bare))["no_references"], 5)       # a claimset's claim is not a citation
+        bare["references"] = []
+        self.assertEqual(problems(rubric.score(bare))["no_references"], 5)
+        self.assertNotIn("no_references", problems(rubric.score(doc(claim()))))  # the paper cites a work
+        secondary = doc(claim(role="supporting"))
+        secondary.pop("references")
+        self.assertNotIn("no_references", problems(rubric.score(secondary)))     # only principal claims
+        nothing = doc(claim(relations=[]))
+        nothing.pop("references")
+        found = problems(rubric.score(nothing))
+        self.assertEqual((found["no_prior_work"], "no_references" in found), (5, False))   # one cost, not two
         numbers = claim(statement="Coverage is 0.81 on [[D6:M4 sample]].", support=[{"kind": "simulation"}])
         self.assertEqual(problems(rubric.score(doc(numbers)))["numbers_without_results"], 5)
         words = claim(statement="Coverage falls on the [[D6:M4 sample]] in $T_1$ (see E1.T1.r2).",

@@ -290,11 +290,15 @@ def _instances(doc, c, by_id, public_record, evidence, warned, cited=None):
 
     if not formal and not _dict(c.get("scope")):
         out.append(("no_scope", cid, CHECKS["no_scope"]["costs"]["missing"], [cid], {}))
+    prior_missing = False
     if c.get("role") == "principal" and c.get("novelty") not in ("not_applicable", "synthesis"):   # 0.6: synthesis
         outside = any(isinstance(r, dict) and r.get("id_type") != "local" for r in _list(c.get("relations")))
         cited = any(isinstance(s, dict) and s.get("kind") == "cited" for s in _list(c.get("support")))
         if not (outside or cited):
+            prior_missing = True
             out.append(("no_prior_work", cid, CHECKS["no_prior_work"]["costs"]["missing"], [cid], {}))
+    if c.get("role") == "principal" and not prior_missing and not _list(doc.get("references")):   # 0.7
+        out.append(("no_references", cid, CHECKS["no_references"]["costs"]["missing"], [cid], {}))
     if warned is not None:
         unsourced = not formal and ("W17", f"claims:{cid}.statement") in warned
     else:
