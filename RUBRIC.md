@@ -1,4 +1,4 @@
-# EntryLib scoring rubric, v0.6
+# EntryLib scoring rubric, v0.7
 
 How EntryLib scores the claimsets it publishes. This document is normative: the scorer (`src/rubric/`) implements it, and the costs in `src/rubric/rubric.json` are the ones stated here. Every score records the rubric version it was computed under.
 
@@ -101,6 +101,7 @@ A claim is **planned** when its `planning` is `confirmatory`, `confirmatory_with
 
 - `no_scope`: a claim with no `scope`, or an empty one, costs 10. Formal claims are exempt.
 - `no_prior_work`: a principal claim with no relation to work outside the paper (a relation whose `id_type` is not `local`, or `cited` support), unless its novelty is `not_applicable` or `synthesis`, costs 5. A synthesis (claimset v0.43) rests on cited work by definition, its own `cited` support or that of the claims it depends on (claimset rule 98), so it is never unrelated to earlier work (from 0.6).
+- `no_references` (from 0.7): a principal claim of a paper that cites no work (its `references` missing or empty) costs 5, unless it already pays `no_prior_work`: a paper places its findings in its field by the works it cites, and a relation to a claimset on EntryLib does not replace them. A simulation study related its claims to those of the review it tested, cited none of the works they rest on, and lost nothing here.
 - `numbers_without_results`: a claim whose statement gives numbers that no recorded result holds costs 5: the validator's warning 17 on the claim's statement (claimset §10), which compares each number with the results and tables of the evidence the claim cites. Names with digits (`M4`, `GPT-4o`) are not numbers. Without the validator's warnings, the rule falls back to the claim's support listing no `results` while its statement gives numbers outside its mathematics, term labels and names. Formal claims are exempt.
 
 ### 3.5 Open problems
@@ -195,6 +196,7 @@ A novelty number, from a literature search, comes with the reviewer (issue #1).
 
 A change of a cost, a band, a check or a rule is a new version of this rubric, listed below with what changed. Provisional scores are recomputed under the current version.
 
+- **0.7** (2026-11): `no_references` (§3.4): a principal claim of a paper that cites no work costs 5, unless it already pays `no_prior_work`. From a simulation study whose claims related only to another claimset's and whose paper cited nothing; its score did not show it.
 - **0.6**, names only (package 0.6.1, 2026-11-16): the score is called **Support**, where it was called reliability, and the group of checks of §3.1 is shown as Evidence. No cost, band, check or rule changed, so the rubric version stays 0.6 and no score moves.
 - **0.6** (2026-11): the novelty label `synthesis` of claimset v0.43, for claims that state what the works they cite establish. A synthesis costs nothing under `no_prior_work` (§3.4), since it rests on cited work, and citing a published claim acknowledges a close match with it (§6).
 - **0.5** (2026-11): background and reviews. A claim with support of its own pays for a cited premise at most what an unchecked assumption costs (§2), so stating the earlier work a finding rests on never costs more than leaving it out, by more than 3. A cited claim published on EntryLib costs 100 minus its score there, at most 20 (§3.1), from scores the site supplies. Reviews: A `cited` support entry costs by how its work was read and whether the passage the claim rests on is given (§3.1: 0, 5, 15 or 20); a review's principal claims pay `review_search` for their search instead of `exploratory_principal` (§3.2). Both read the claimset extension `review`; a claimset without it scores as under 0.4. A `support_kind` problem over claims with different support names each kind (§4.3). The rubric reads each claim's record, not a declared kind of work (§2).

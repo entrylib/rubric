@@ -1,5 +1,5 @@
 {
-  "version": "0.6",
+  "version": "0.7",
   "bands": [
     {"name": "high", "label": "High", "min": 80},
     {"name": "medium", "label": "Medium", "min": 60},
@@ -79,6 +79,11 @@
       "group": "context", "count": "kind", "costs": {"missing": 5},
       "text": "A principal claim related to no earlier work",
       "fix": "Relate the claim to the earlier work it extends, addresses or departs from."
+    },
+    "no_references": {
+      "group": "context", "count": "kind", "costs": {"missing": 5},
+      "text": "The paper cites no work",
+      "fix": "Cite in references the works the claim builds on, tests or departs from, and point to each from the relation, support or definition that uses it; when it tests a claimset, start from the works that claimset cites."
     },
     "numbers_without_results": {
       "group": "context", "count": "kind", "costs": {"missing": 5},
